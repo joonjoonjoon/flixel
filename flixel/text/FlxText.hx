@@ -639,7 +639,7 @@ class FlxText extends FlxSprite
 				framePixels.colorTransform(_flashRect, _colorTransform);
 			}
 		#if !flash
-			origin.set(frameWidth * 0.5, frameHeight * 0.5);
+			//origin.set(frameWidth * 0.5, frameHeight * 0.5);
 		}
 		#end
 		
