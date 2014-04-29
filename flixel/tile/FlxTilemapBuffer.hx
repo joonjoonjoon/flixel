@@ -6,6 +6,7 @@ import flash.geom.Point;
 import flash.geom.Rectangle;
 import flixel.FlxCamera;
 import flixel.FlxG;
+import util.CameraHelper;
 
 /**
  * A helper object to keep tilemap drawing performance decent across the new multi-camera system.
@@ -142,7 +143,7 @@ class FlxTilemapBuffer
 			Camera = FlxG.camera;
 		}
 
-		columns = Math.ceil(Camera.width / (TileWidth * ScaleX)) + 1;
+		columns = Math.ceil(Camera.width * (1/CameraHelper.CAMERA_ZOOM_OUT_MAXIMUM) / (TileWidth * ScaleX)) + 1;
 		
 		if (columns > WidthInTiles)
 		{
@@ -164,7 +165,7 @@ class FlxTilemapBuffer
 			Camera = FlxG.camera;
 		}
 		
-		rows = Math.ceil(Camera.height / (TileHeight * ScaleY)) + 1;
+		rows = Math.ceil(Camera.height * (1/CameraHelper.CAMERA_ZOOM_OUT_MAXIMUM) / (TileHeight * ScaleY)) + 1;
 		
 		if (rows > HeightInTiles)
 		{
