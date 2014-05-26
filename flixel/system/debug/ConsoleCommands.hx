@@ -49,6 +49,9 @@ class ConsoleCommands
 		
 		console.addCommand(["pause", "p"], pause, "Toggle between paused and unpaused");
 		
+		console.addCommand(["clearBitmapLog", "cbl"], FlxG.bitmapLog.clear, "Clears the bitmapLog window.");
+		console.addCommand(["viewCache", "vc"], FlxG.bitmapLog.viewCache, "Adds the cache to the bitmapLog window");
+		
 		// Default registration
 		console.registerObject("FlxG", FlxG);
 		#end

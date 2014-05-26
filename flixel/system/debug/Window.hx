@@ -43,6 +43,7 @@ class Window extends Sprite
 
 	public var minSize:Point;
 	public var maxSize:Point;
+	public var toggleButton:FlxSystemButton;
 	
 	/**
 	 * Width of the window. Using Sprite.width is super unreliable for some reason!
@@ -96,6 +97,8 @@ class Window extends Sprite
 	public function new(Title:String, ?Icon:BitmapData, Width:Float = 0, Height:Float = 0, Resizable:Bool = true, ?Bounds:Rectangle, Closable:Bool = false)
 	{
 		super();
+		
+		minSize = new Point(50, 30);
 		
 		_width = Std.int(Math.abs(Width));
 		_height = Std.int(Math.abs(Height));
@@ -242,7 +245,6 @@ class Window extends Sprite
 	public function updateBounds(Bounds:Rectangle):Void
 	{
 		_bounds = Bounds;
-		minSize = new Point(50, 30);
 		if (_bounds != null)
 		{
 			maxSize = new Point(_bounds.width,_bounds.height);
@@ -253,11 +255,30 @@ class Window extends Sprite
 		}
 	}
 	
-	public function toggleVisibility():Void
+	public function setVisible(Value:Bool):Void
 	{
-		visible = !visible;
+		visible = Value;
 		FlxG.save.data.windowSettings[_id] = visible;
 		FlxG.save.flush();
+		
+		if (toggleButton != null)
+		{
+			toggleButton.toggled = !visible;
+		}
+		if (visible)
+		{
+			putOnTop();
+		}
+	}
+	
+	public inline function toggleVisible():Void
+	{
+		setVisible(!visible);
+	}
+	
+	public inline function putOnTop():Void
+	{
+		parent.addChild(this);
 	}
 	
 	private function loadSaveData():Void
@@ -356,13 +377,14 @@ class Window extends Sprite
 	{
 		if (_overHeader)
 		{
-			parent.addChild(this);
+			putOnTop();
 			_dragging = true;
 			_drag.x = mouseX;
 			_drag.y = mouseY;
 		}
 		else if (_overHandle)
 		{
+			putOnTop();
 			_resizing = true;
 			_drag.x = _width - mouseX;
 			_drag.y = _height - mouseY;

@@ -10,6 +10,7 @@ import flixel.system.FlxAssets;
 import flixel.system.FlxQuadTree;
 import flixel.system.FlxVersion;
 import flixel.system.frontEnds.BitmapFrontEnd;
+import flixel.system.frontEnds.BitmapLogFrontEnd;
 import flixel.system.frontEnds.CameraFrontEnd;
 import flixel.system.frontEnds.ConsoleFrontEnd;
 import flixel.system.frontEnds.DebuggerFrontEnd;
@@ -91,7 +92,7 @@ class FlxG
 	 * The HaxeFlixel version, in semantic versioning syntax. Use Std.string()
 	 * on it to get a String formatted like this: "HaxeFlixel MAJOR.MINOR.PATCH-PATCH_VERSION".
 	 */ 
-	public static var VERSION(default, null):FlxVersion = new FlxVersion(3, 3, 0);
+	public static var VERSION(default, null):FlxVersion = new FlxVersion(3, 3, 3);
 	
 	/**
 	 * Internal tracker for game object.
@@ -230,6 +231,10 @@ class FlxG
 	 * Used to add messages to the log window or enable trace() redirection.
 	 */
 	public static var log(default, null):LogFrontEnd = new LogFrontEnd();
+	/**
+	 * Used to add images to the bitmapLog window
+	 */
+	public static var bitmapLog(default, null):BitmapLogFrontEnd = new BitmapLogFrontEnd();
 	/**
 	 * Used to add or remove things to / from the watch window.
 	 */

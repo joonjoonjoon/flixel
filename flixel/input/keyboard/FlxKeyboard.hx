@@ -191,9 +191,9 @@ class FlxKeyboard implements IFlxInput
 	}
 
 	/**
-	 * Get an Array of FlxMapObjects that are in a pressed state
+	 * Get an Array of FlxKey that are in a pressed state
 	 * 
-	 * @return	Array<FlxMapObject> of keys that are currently pressed.
+	 * @return	Array<FlxKey> of keys that are currently pressed.
 	 */
 	public function getIsDown():Array<FlxKey>
 	{
@@ -286,7 +286,8 @@ class FlxKeyboard implements IFlxInput
 		i = 1;
 		while (i <= 12)
 		{
-			addKey("F" + i, 111 + (i++));
+			addKey("F" + i, 111 + i);
+			i++;
 		}
 		
 		// SPECIAL KEYS + PUNCTUATION
@@ -316,6 +317,7 @@ class FlxKeyboard implements IFlxInput
 		addKey("LEFT", 37);
 		addKey("RIGHT", 39);
 		addKey("TAB", 9);
+		addKey("PRINTSCREEN", 301);
 		
 		addKey("NUMPADMULTIPLY", 106);
 		addKey("NUMPADMINUS", 109);

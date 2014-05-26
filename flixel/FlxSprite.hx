@@ -12,6 +12,7 @@ import flixel.FlxG;
 import flixel.system.layer.DrawStackItem;
 import flixel.system.layer.frames.FlxFrame;
 import flixel.system.layer.frames.FlxSpriteFrames;
+import flixel.system.layer.frames.FrameType;
 import flixel.system.layer.Region;
 import flixel.util.FlxAngle;
 import flixel.util.FlxColor;
@@ -488,7 +489,6 @@ class FlxSprite extends FlxObject
 		#end
 		
 		updateFrameData();
-		resetHelpers();
 		
 		if (AutoBuffer)
 		{
@@ -498,6 +498,7 @@ class FlxSprite extends FlxObject
 		}
 		
 		animation.createPrerotated();
+		resetHelpers();
 		return this;
 	}
 	
@@ -574,8 +575,13 @@ class FlxSprite extends FlxObject
 		#if FLX_RENDER_TILE
 		antialiasing = AntiAliasing;
 		#else
+		var key:String = Data.assetName + ":" + Image;
 		var frameBitmapData:BitmapData = getFlxFrameBitmapData();
-		loadRotatedGraphic(frameBitmapData, Rotations, -1, AntiAliasing, AutoBuffer, Data.assetName + ":" + Image);
+		if (FlxG.bitmap.get(key) == null)
+		{
+			frameBitmapData = frameBitmapData.clone();
+		}
+		loadRotatedGraphic(frameBitmapData, Rotations, -1, AntiAliasing, AutoBuffer, key);
 		#end
 		
 		return this;
@@ -688,15 +694,8 @@ class FlxSprite extends FlxObject
 		centerOrigin();
 		
 	#if FLX_RENDER_BLIT
-		if ((framePixels == null) || (framePixels.width != frameWidth) || (framePixels.height != frameHeight))
-		{
-			framePixels = new BitmapData(Std.int(width), Std.int(height));
-		}
-		framePixels.copyPixels(cachedGraphics.bitmap, _flashRect, _flashPointZero);
-		if (useColorTransform) 
-		{
-			framePixels.colorTransform(_flashRect, colorTransform);
-		}
+		dirty = true;
+		getFlxFrameBitmapData();
 	#end
 		
 		_halfWidth = frameWidth * 0.5;
@@ -830,7 +829,7 @@ class FlxSprite extends FlxObject
 				var sx:Float = scale.x * _facingHorizontalMult;
 				var sy:Float = scale.y * _facingVerticalMult;
 				
-				if (frame.rotated) // todo: handle different additional angles (since different packers adds different values, e.g. -90 or +90)
+				if (frame.type == FrameType.ROTATED) // todo: handle different additional angles (since different packers adds different values, e.g. -90 or +90)
 				{
 					cos = -_sinAngle;
 					sin = _cosAngle;
@@ -937,6 +936,7 @@ class FlxSprite extends FlxObject
 			resetFrameBitmapDatas();
 			
 			#if FLX_RENDER_BLIT
+			dirty = true;
 			calcFrame();
 			#end
 			return;
@@ -955,6 +955,7 @@ class FlxSprite extends FlxObject
 		cachedGraphics.bitmap.draw(bitmapData, _matrix, null, brushBlend, null, Brush.antialiasing);
 		resetFrameBitmapDatas();
 		#if FLX_RENDER_BLIT
+		dirty = true;
 		calcFrame();
 		#end
 	}
@@ -969,6 +970,7 @@ class FlxSprite extends FlxObject
 		#if FLX_RENDER_BLIT
 		if (Force || dirty)
 		{
+			dirty = true;
 			calcFrame();
 		}
 		#else
@@ -1168,29 +1170,11 @@ class FlxSprite extends FlxObject
 		}
 		#end
 		
-		if (frame != null)
-		{
-			if ((framePixels == null) || (framePixels.width != frameWidth) || (framePixels.height != frameHeight))
-			{
-				if (framePixels != null)
-					framePixels.dispose();
-					
-				framePixels = new BitmapData(Std.int(frame.sourceSize.x), Std.int(frame.sourceSize.y));
-			}
-				
-			framePixels.copyPixels(getFlxFrameBitmapData(), _flashRect, _flashPointZero);
-		}
-			
-		if (useColorTransform) 
-		{
-			framePixels.colorTransform(_flashRect, colorTransform);
-		}
-		
-		dirty = false;
+		getFlxFrameBitmapData();
 	}
 	
 	/**
-	 * Use this method for creating tileSheet for FlxSprite. Must be called after makeGraphic(), loadGraphic or loadRotatedGraphic().
+	 * Use this method for creating tileSheet for FlxSprite. Must be called after makeGraphic(), loadGraphic() or loadRotatedGraphic().
 	 * If you forget to call it then you will not see this FlxSprite on c++ target
 	 */
 	public function updateFrameData():Void
@@ -1209,8 +1193,10 @@ class FlxSprite extends FlxObject
 			framesData = cachedGraphics.tilesheet.getSpriteSheetFrames(region, null);
 		}
 		
-		frame = framesData.frames[0];
 		frames = framesData.frames.length;
+		animation.frameIndex = 0;
+		frame = framesData.frames[0];
+		
 		resetSizeFromFrame();
 	}
 	
@@ -1219,28 +1205,54 @@ class FlxSprite extends FlxObject
 	 */
 	public inline function getFlxFrameBitmapData():BitmapData
 	{
-		var frameBmd:BitmapData = null;
-		if (frame != null)
+		if (frame != null && dirty)
 		{
-			if (flipX && flipY)
+			if (!flipX && !flipY && frame.type == FrameType.REGULAR)
 			{
-				frameBmd = frame.getHVReversedBitmap();
-			}
-			else if (flipX)
-			{
-				frameBmd = frame.getHReversedBitmap();
-			}
-			else if (flipY)
-			{
-				frameBmd = frame.getVReversedBitmap();
+				framePixels = frame.paintOnBitmap(framePixels);
 			}
 			else
 			{
-				frameBmd = frame.getBitmap();
+				var frameBmd:BitmapData = null;
+				
+				if (flipX && flipY)
+				{
+					frameBmd = frame.getHVReversedBitmap();
+				}
+				else if (flipX)
+				{
+					frameBmd = frame.getHReversedBitmap();
+				}
+				else if (flipY)
+				{
+					frameBmd = frame.getVReversedBitmap();
+				}
+				else
+				{
+					frameBmd = frame.getBitmap();
+				}
+				
+				if ((framePixels == null) || (framePixels.width != frameWidth) || (framePixels.height != frameHeight))
+				{
+					if (framePixels != null)
+						framePixels.dispose();
+						
+					framePixels = new BitmapData(Std.int(frame.sourceSize.x), Std.int(frame.sourceSize.y));
+				}
+				
+				framePixels.copyPixels(frameBmd, _flashRect, _flashPointZero);
 			}
+			
+			if (useColorTransform) 
+			{
+				framePixels.colorTransform(_flashRect, colorTransform);
+			}
+			
+			dirty = false;
+			
 		}
 		
-		return frameBmd;
+		return framePixels;
 	}
 	
 	/**

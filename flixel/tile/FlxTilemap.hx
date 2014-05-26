@@ -898,7 +898,7 @@ class FlxTilemap extends FlxObject
 		{
 			return true;
 		}
-		
+
 		return false;
 	}
 	
@@ -970,7 +970,13 @@ class FlxTilemap extends FlxObject
 					column++;
 					continue;
 				}
+				
 				var dataIndex:Int = _data[index];
+				if (dataIndex < 0)
+				{
+					column++;
+					continue;
+				}
 				
 				tile = _tileObjects[dataIndex];
 				tile.width = _scaledTileWidth;
@@ -1392,12 +1398,14 @@ class FlxTilemap extends FlxObject
 				
 				if ((rx > tileX) && (rx < tileX + _scaledTileWidth))
 				{
-					if (Result != null)
+					if (Result == null)
 					{
-						Result.x = rx;
-						Result.y = ry;
+						Result = FlxPoint.get();
 					}
 					
+					Result.x = rx;
+					Result.y = ry;
+
 					return false;
 				}
 				

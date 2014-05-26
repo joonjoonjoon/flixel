@@ -18,7 +18,7 @@ class FlxAnimationController implements IFlxDestroyable
 	/**
 	 * Tell the sprite to change to a specific frame of the _curAnim.
 	 */
-	public var frameIndex(default, set):Int = 0;
+	public var frameIndex(default, set):Int = -1;
 	
 	/**
 	 * Tell the sprite to change to a frame with specific name.
@@ -744,7 +744,7 @@ class FlxAnimationController implements IFlxDestroyable
 		return Value;
 	}
 	
-	private inline function get_finished():Bool
+	private function get_finished():Bool
 	{
 		var finished:Bool = true;
 		if (_curAnim != null)
@@ -776,7 +776,7 @@ class FlxAnimationController implements IFlxDestroyable
 	 */
 	public inline function getFrameIndex(Frame:FlxFrame):Int
 	{
-		return FlxArrayUtil.indexOf(_sprite.framesData.frames, Frame);
+		return _sprite.framesData.frames.indexOf(Frame);
 	}
 	
 	/**

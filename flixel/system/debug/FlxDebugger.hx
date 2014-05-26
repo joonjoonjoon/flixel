@@ -1,4 +1,5 @@
 package flixel.system.debug;
+import flixel.util.FlxDestroyUtil;
 
 #if !FLX_NO_DEBUG
 
@@ -37,8 +38,17 @@ class GraphicStats extends BitmapData {}
 @:bitmap("assets/images/debugger/buttons/watch.png")
 class GraphicWatch extends BitmapData {}
 
+@:bitmap("assets/images/debugger/buttons/bitmapLog.png")
+class GraphicBitmapLog extends BitmapData {}
+
 @:bitmap("assets/images/debugger/buttons/console.png") 
 class GraphicConsole extends BitmapData {}
+
+@:bitmap("assets/images/debugger/buttons/arrowLeft.png") 
+class GraphicArrowLeft extends BitmapData {}
+
+@:bitmap("assets/images/debugger/buttons/arrowRight.png") 
+class GraphicArrowRight extends BitmapData {}
 
 /**
  * Container for the new debugger overlay. Most of the functionality is in the debug folder widgets,
@@ -55,26 +65,13 @@ class FlxDebugger extends Sprite
 	 */
 	public static inline var TOP_HEIGHT:Int = 20;
 	
-	/**
-	 * Container for the performance monitor widget.
-	 */
 	public var stats:Stats;
-	/**
-	 * Container for the trace output widget.
-	 */	 
 	public var log:Log;
-	/**
-	 * Container for the watch window widget.
-	 */
 	public var watch:Watch;
-	/**
-	 * Container for the record, stop and play buttons.
-	 */
+	public var bitmapLog:BitmapLog;
 	public var vcr:VCR;
-	/**
-	 * Container for console.
-	 */
 	public var console:Console;
+	
 	/**
 	 * Whether the mouse is currently over one of the debugger windows or not.
 	 */
@@ -117,23 +114,9 @@ class FlxDebugger extends Sprite
 	{
 		_screen = null;
 		
-		for (o in _rightButtons)
-		{
-			o.destroy();
-		}
-		_rightButtons = null;
-		
-		for (o in _leftButtons)
-		{
-			o.destroy();
-		}
-		_leftButtons = null;
-		
-		for (o in _middleButtons)
-		{
-			o.destroy();
-		}
-		_middleButtons = null;
+		_leftButtons = FlxDestroyUtil.destroyArray(_leftButtons);
+		_middleButtons = FlxDestroyUtil.destroyArray(_middleButtons);
+		_rightButtons = FlxDestroyUtil.destroyArray(_rightButtons);
 		
 		removeChild(_topBar);
 		_topBar = null;
@@ -149,6 +132,12 @@ class FlxDebugger extends Sprite
 			removeChild(watch);
 			watch.destroy();
 			watch = null;
+		}
+		if (bitmapLog != null)
+		{
+			removeChild(bitmapLog);
+			bitmapLog.destroy();
+			bitmapLog = null;
 		}
 		if (stats != null)
 		{
@@ -204,6 +193,8 @@ class FlxDebugger extends Sprite
 				watch.resize(_screen.x / 4, 68);
 				watch.reposition(_screen.x,_screen.y);
 				stats.reposition(_screen.x, 0);
+				bitmapLog.resize(_screen.x / 4, 68);
+				bitmapLog.reposition(0,_screen.y - (68*2) - (GUTTER*2));
 			case BIG:
 				console.resize(_screen.x - GUTTER * 2, 35);
 				console.reposition(GUTTER, _screen.y);
@@ -212,6 +203,8 @@ class FlxDebugger extends Sprite
 				watch.resize((_screen.x - GUTTER * 3) / 2, _screen.y / 2);
 				watch.reposition(_screen.x, _screen.y - watch.height - console.height - GUTTER * 1.5);
 				stats.reposition(_screen.x, 0);
+				bitmapLog.resize((_screen.x - GUTTER * 3) / 2, _screen.y-(GUTTER*2)-(_screen.y / 2) -(35*2));
+				bitmapLog.reposition(0, GUTTER * 1.5);
 			case TOP:
 				console.resize(_screen.x - GUTTER * 2, 35);
 				console.reposition(0, 0);
@@ -219,7 +212,9 @@ class FlxDebugger extends Sprite
 				log.reposition(0,console.height + GUTTER + 15);
 				watch.resize((_screen.x - GUTTER * 3) / 2, _screen.y / 4);
 				watch.reposition(_screen.x,console.height + GUTTER + 15);
-				stats.reposition(_screen.x,_screen.y);
+				stats.reposition(_screen.x, _screen.y);
+				bitmapLog.resize((_screen.x - GUTTER * 3) / 2, _screen.y / 4);
+				bitmapLog.reposition(0, console.height + (GUTTER*2) + 15 + (_screen.y / 4) + GUTTER);
 			case LEFT:
 				console.resize(_screen.x - GUTTER * 2, 35);
 				console.reposition(GUTTER, _screen.y);
@@ -228,6 +223,8 @@ class FlxDebugger extends Sprite
 				watch.resize(_screen.x / 3, (_screen.y - 15 - GUTTER * 2.5) / 2 - console.height / 2);
 				watch.reposition(0,log.y + log.height + GUTTER);
 				stats.reposition(_screen.x, 0);
+				bitmapLog.resize(_screen.x / 3, (_screen.y - 15 - GUTTER * 2.5) / 2 - console.height / 2 - GUTTER);
+				bitmapLog.reposition((_screen.x / 3) + GUTTER*2, 0);
 			case RIGHT:
 				console.resize(_screen.x - GUTTER * 2, 35);
 				console.reposition(GUTTER, _screen.y);
@@ -236,6 +233,8 @@ class FlxDebugger extends Sprite
 				watch.resize(_screen.x / 3, (_screen.y - 15 - GUTTER * 2.5) / 2 - console.height / 2);
 				watch.reposition(_screen.x,log.y + log.height + GUTTER);
 				stats.reposition(0, 0);
+				bitmapLog.resize(_screen.x / 3, (_screen.y - 15 - GUTTER * 2.5) / 2 - console.height / 2 - GUTTER);
+				bitmapLog.reposition(_screen.x - (GUTTER*2) - ((_screen.x / 3)*2), 0);
 			case STANDARD:
 				console.resize(_screen.x - GUTTER * 2, 35);
 				console.reposition(GUTTER, _screen.y);
@@ -244,6 +243,8 @@ class FlxDebugger extends Sprite
 				watch.resize((_screen.x - GUTTER * 3) / 2, _screen.y / 4);
 				watch.reposition(_screen.x,_screen.y - watch.height - console.height - GUTTER * 1.5);
 				stats.reposition(_screen.x, 0);
+				bitmapLog.resize((_screen.x - GUTTER * 3) / 2, _screen.y / 4);
+				bitmapLog.reposition(0, log.y - GUTTER - bitmapLog.height);
 		}
 	}
 	
@@ -269,18 +270,6 @@ class FlxDebugger extends Sprite
 		{
 			window.updateBounds(_screenBounds);
 		}
-	}
-	
-	public function onStateSwitch():Void
-	{
-		for (window in _windows)
-		{
-			if (Std.is(window, Tracker))
-			{
-				window.close();
-			}
-		}
-		Tracker.onStateSwitch();
 	}
 
 	/**
@@ -375,6 +364,13 @@ class FlxDebugger extends Sprite
 		}
 	}
 	
+	public function addWindowToggleButton(window:Window, icon:Class<BitmapData>):Void
+	{
+		var button = addButton(RIGHT, Type.createInstance(icon, [0, 0]), window.toggleVisible, true, true);
+		window.toggleButton = button;
+		button.toggled = !window.visible;
+	}
+	
 	public inline function addWindow(window:Window):Window
 	{
 		_windows.push(window);
@@ -428,11 +424,12 @@ class FlxDebugger extends Sprite
 		txt.autoSize = TextFieldAutoSize.LEFT;
 		txt.text = Std.string(FlxG.VERSION);
 		
-		_leftButtons = new Array<FlxSystemButton>();
-		_rightButtons = new Array<FlxSystemButton>();
-		_middleButtons = new Array<FlxSystemButton>();
+		_leftButtons = [];
+		_rightButtons = [];
+		_middleButtons = [];
 		
 		addWindow(log = new Log());
+		addWindow(bitmapLog = new BitmapLog());
 		addWindow(watch = new Watch());
 		addWindow(console = new Console());
 		addWindow(stats = new Stats());
@@ -442,10 +439,12 @@ class FlxDebugger extends Sprite
 		addButton(LEFT, new GraphicFlixel(0, 0), openHomepage);
 		addButton(LEFT, null, openHomepage).addChild(txt);
 		
-		addButton(RIGHT, new GraphicLog(0, 0), log.toggleVisibility, true).toggled = !log.visible; 
-		addButton(RIGHT, new GraphicWatch(0, 0), watch.toggleVisibility, true).toggled = !watch.visible; 
-		addButton(RIGHT, new GraphicConsole(0, 0), console.toggleVisibility, true).toggled = !console.visible; 
-		addButton(RIGHT, new GraphicStats(0, 0), stats.toggleVisibility, true).toggled = !stats.visible; 
+		addWindowToggleButton(bitmapLog, GraphicBitmapLog);
+		addWindowToggleButton(log, GraphicLog);
+		
+		addWindowToggleButton(watch, GraphicWatch);
+		addWindowToggleButton(console, GraphicConsole);
+		addWindowToggleButton(stats, GraphicStats);
 		
 		var drawDebugButton = addButton(RIGHT, new GraphicDrawDebug(0, 0), toggleDrawDebug, true);
 		drawDebugButton.toggled = !FlxG.debugger.drawDebug;
@@ -459,6 +458,8 @@ class FlxDebugger extends Sprite
 		
 		addEventListener(MouseEvent.MOUSE_OVER, onMouseOver);
 		addEventListener(MouseEvent.MOUSE_OUT, onMouseOut);
+		
+		FlxG.signals.stateSwitched.add(Tracker.onStateSwitch);
 	}
 	
 	/**
@@ -489,7 +490,7 @@ class FlxDebugger extends Sprite
 	
 	private function removeButtonFromArray(Arr:Array<FlxSystemButton>, Button:FlxSystemButton):Void
 	{
-		var index = FlxArrayUtil.indexOf(Arr, Button);
+		var index = Arr.indexOf(Button);
 		if (index != -1)
 		{
 			Arr.splice(index, 1);

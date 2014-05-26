@@ -34,6 +34,7 @@ import flixel.util.FlxRect;
 import flixel.util.FlxTimer;
 #end
 
+import flixel.animation.FlxAnimationController;
 import flixel.util.FlxStringUtil;
 
 class Tracker extends Watch
@@ -118,6 +119,8 @@ class Tracker extends Watch
 			addProfile(new TrackerProfile(FlxPath, ["speed", "angle", "autoCenter", "_nodeIndex", "active", "finished"]));
 			addProfile(new TrackerProfile(FlxTimer, ["time", "loops", "active", "finished", "timeLeft", "elapsedTime", "loopsLeft", "elapsedLoops", "progress"]));
 			
+			addProfile(new TrackerProfile(FlxAnimationController, ["frameIndex", "frameName", "name", "paused", "finished", "frames"]));
+			
 			// Inputs
 			#if !FLX_NO_MOUSE
 			addProfile(new TrackerProfile(FlxMouse, ["screenX", "screenY", "wheel", "visible", "useSystemCursor", "pressed", "justPressed", 
@@ -164,10 +167,13 @@ class Tracker extends Watch
 		x = _numTrackerWindows * 80;
 		y = _numTrackerWindows * 25 + 20;
 		_numTrackerWindows++;
+		
+		FlxG.signals.stateSwitched.add(close);
 	}
 	
 	override public function destroy():Void
 	{
+		FlxG.signals.stateSwitched.remove(close);
 		_numTrackerWindows--;
 		objectsBeingTracked.remove(_object);
 		_object = null;
