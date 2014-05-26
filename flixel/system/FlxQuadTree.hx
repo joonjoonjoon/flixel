@@ -2,8 +2,11 @@ package flixel.system;
 
 import flixel.FlxBasic;
 import flixel.FlxObject;
+import flixel.group.FlxGroup;
+import flixel.group.FlxSpriteGroup;
 import flixel.group.FlxTypedGroup;
 import flixel.system.FlxCollisionType;
+import flixel.util.FlxDestroyUtil;
 import flixel.util.FlxRect;
 
 /**
@@ -190,14 +193,15 @@ class FlxQuadTree extends FlxRect
 	 */
 	public static  var _NUM_CACHED_QUAD_TREES:Int = 0;
 	private static var _cachedTreesHead:FlxQuadTree;
-	private 	   var next:FlxQuadTree;
+	private var next:FlxQuadTree;
 	
 	/**
 	 * Private, use recycle instead.
 	 */
-	private function new(X:Float, Y:Float, Width:Float, Height:Float, Parent:FlxQuadTree = null)
+	private function new(X:Float, Y:Float, Width:Float, Height:Float, ?Parent:FlxQuadTree)
 	{
-		super(X, Y, Width, Height);
+		super();
+		set(X, Y, Width, Height);
 		reset(X, Y, Width, Height, Parent);
 	}
 	
@@ -209,7 +213,7 @@ class FlxQuadTree extends FlxRect
 	 * @param	Height		Desired height of this node.
 	 * @param	Parent		The parent branch or node.  Pass null to create a root.
 	 */
-	public static function recycle(X:Float, Y:Float, Width:Float, Height:Float, Parent:FlxQuadTree = null):FlxQuadTree
+	public static function recycle(X:Float, Y:Float, Width:Float, Height:Float, ?Parent:FlxQuadTree):FlxQuadTree
 	{
 		if (_cachedTreesHead != null)
 		{
@@ -255,7 +259,7 @@ class FlxQuadTree extends FlxRect
 			if (Parent._headA.object != null)
 			{
 				iterator = Parent._headA;
-				while(iterator != null)
+				while (iterator != null)
 				{
 					if (_tailA.object != null)
 					{
@@ -270,7 +274,7 @@ class FlxQuadTree extends FlxRect
 			if (Parent._headB.object != null)
 			{
 				iterator = Parent._headB;
-				while(iterator != null)
+				while (iterator != null)
 				{
 					if (_tailB.object != null)
 					{
@@ -307,49 +311,19 @@ class FlxQuadTree extends FlxRect
 	/**
 	 * Clean up memory.
 	 */
-	public function destroy():Void
+	override public function destroy():Void
 	{
-		if (_headA != null)
-		{
-			_headA.destroy();
-		}
-		_headA = null;
-		if (_tailA != null)
-		{
-			_tailA.destroy();
-		}
-		_tailA = null;
-		if (_headB != null)
-		{
-			_headB.destroy();
-		}
-		_headB = null;
-		if (_tailB != null)
-		{
-			_tailB.destroy();
-		}
-		_tailB = null;
+		_headA = FlxDestroyUtil.destroy(_headA);
+		_headB = FlxDestroyUtil.destroy(_headB);
 
-		if (_northWestTree != null)
-		{
-			_northWestTree.destroy();
-		}
-		_northWestTree = null;
-		if (_northEastTree != null)
-		{
-			_northEastTree.destroy();
-		}
-		_northEastTree = null;
-		if (_southEastTree != null)
-		{
-			_southEastTree.destroy();
-		}
-		_southEastTree = null;
-		if (_southWestTree != null)
-		{
-			_southWestTree.destroy();
-		}
-		_southWestTree = null;
+		_tailA = FlxDestroyUtil.destroy(_tailA);
+		_tailB = FlxDestroyUtil.destroy(_tailB);
+
+		_northWestTree = FlxDestroyUtil.destroy(_northWestTree);
+		_northEastTree = FlxDestroyUtil.destroy(_northEastTree);
+		
+		_southWestTree = FlxDestroyUtil.destroy(_southWestTree);
+		_southEastTree = FlxDestroyUtil.destroy(_southEastTree);
 
 		_object = null;
 		_processingCallback = null;
@@ -361,6 +335,8 @@ class FlxQuadTree extends FlxRect
 		next = _cachedTreesHead;
 		_cachedTreesHead = this;
 		_NUM_CACHED_QUAD_TREES++;
+
+		super.destroy();
 	}
 
 	/**
@@ -397,35 +373,24 @@ class FlxQuadTree extends FlxRect
 	{
 		_list = list;
 		
-		if (ObjectOrGroup.collisionType == FlxCollisionType.SPRITEGROUP)
-		{
-			ObjectOrGroup = Reflect.field(ObjectOrGroup, "group");
-		}
-		
-		if (ObjectOrGroup.collisionType == FlxCollisionType.GROUP)
+		var group = FlxGroup.resolveGroup(ObjectOrGroup);
+		if (group != null)
 		{
 			var i:Int = 0;
 			var basic:FlxBasic;
-			var collisionType:FlxCollisionType;
-			var group:FlxTypedGroup<FlxBasic> = cast ObjectOrGroup;
 			var members:Array<FlxBasic> = group.members;
 			var l:Int = group.length;
 			while (i < l)
 			{
 				basic = members[i++];
-				if ((basic != null) && basic.exists)
+				if (basic != null && basic.exists)
 				{
-					collisionType = basic.collisionType;
-					if (collisionType == FlxCollisionType.SPRITEGROUP)
+					group = FlxGroup.resolveGroup(basic);
+					if (group != null)
 					{
-						basic = Reflect.field(ObjectOrGroup, "group");
+						add(group, list);
 					}
-					
-					if (collisionType == FlxCollisionType.GROUP)
-					{
-						add(basic, list);
-					}
-					else if (collisionType == FlxCollisionType.OBJECT || collisionType == FlxCollisionType.TILEMAP)
+					else
 					{
 						_object = cast(basic, FlxObject);
 						if (_object.exists && _object.allowCollisions != FlxObject.NONE)
@@ -461,16 +426,16 @@ class FlxQuadTree extends FlxRect
 	private function addObject():Void
 	{
 		//If this quad (not its children) lies entirely inside this object, add it here
-		if(!_canSubdivide || ((_leftEdge >= _objectLeftEdge) && (_rightEdge <= _objectRightEdge) && (_topEdge >= _objectTopEdge) && (_bottomEdge <= _objectBottomEdge)))
+		if (!_canSubdivide || (_leftEdge >= _objectLeftEdge && _rightEdge <= _objectRightEdge && _topEdge >= _objectTopEdge && _bottomEdge <= _objectBottomEdge))
 		{
 			addToList();
 			return;
 		}
 		
 		//See if the selected object fits completely inside any of the quadrants
-		if((_objectLeftEdge > _leftEdge) && (_objectRightEdge < _midpointX))
+		if ((_objectLeftEdge > _leftEdge) && (_objectRightEdge < _midpointX))
 		{
-			if((_objectTopEdge > _topEdge) && (_objectBottomEdge < _midpointY))
+			if ((_objectTopEdge > _topEdge) && (_objectBottomEdge < _midpointY))
 			{
 				if (_northWestTree == null)
 				{
@@ -479,7 +444,7 @@ class FlxQuadTree extends FlxRect
 				_northWestTree.addObject();
 				return;
 			}
-			if((_objectTopEdge > _midpointY) && (_objectBottomEdge < _bottomEdge))
+			if ((_objectTopEdge > _midpointY) && (_objectBottomEdge < _bottomEdge))
 			{
 				if (_southWestTree == null)
 				{
@@ -489,9 +454,9 @@ class FlxQuadTree extends FlxRect
 				return;
 			}
 		}
-		if((_objectLeftEdge > _midpointX) && (_objectRightEdge < _rightEdge))
+		if ((_objectLeftEdge > _midpointX) && (_objectRightEdge < _rightEdge))
 		{
-			if((_objectTopEdge > _topEdge) && (_objectBottomEdge < _midpointY))
+			if ((_objectTopEdge > _topEdge) && (_objectBottomEdge < _midpointY))
 			{
 				if (_northEastTree == null)
 				{
@@ -500,7 +465,7 @@ class FlxQuadTree extends FlxRect
 				_northEastTree.addObject();
 				return;
 			}
-			if((_objectTopEdge > _midpointY) && (_objectBottomEdge < _bottomEdge))
+			if ((_objectTopEdge > _midpointY) && (_objectBottomEdge < _bottomEdge))
 			{
 				if (_southEastTree == null)
 				{
@@ -512,7 +477,7 @@ class FlxQuadTree extends FlxRect
 		}
 		
 		//If it wasn't completely contained we have to check out the partial overlaps
-		if((_objectRightEdge > _leftEdge) && (_objectLeftEdge < _midpointX) && (_objectBottomEdge > _topEdge) && (_objectTopEdge < _midpointY))
+		if ((_objectRightEdge > _leftEdge) && (_objectLeftEdge < _midpointX) && (_objectBottomEdge > _topEdge) && (_objectTopEdge < _midpointY))
 		{
 			if (_northWestTree == null)
 			{
@@ -520,7 +485,7 @@ class FlxQuadTree extends FlxRect
 			}
 			_northWestTree.addObject();
 		}
-		if((_objectRightEdge > _midpointX) && (_objectLeftEdge < _rightEdge) && (_objectBottomEdge > _topEdge) && (_objectTopEdge < _midpointY))
+		if ((_objectRightEdge > _midpointX) && (_objectLeftEdge < _rightEdge) && (_objectBottomEdge > _topEdge) && (_objectTopEdge < _midpointY))
 		{
 			if (_northEastTree == null)
 			{
@@ -528,7 +493,7 @@ class FlxQuadTree extends FlxRect
 			}
 			_northEastTree.addObject();
 		}
-		if((_objectRightEdge > _midpointX) && (_objectLeftEdge < _rightEdge) && (_objectBottomEdge > _midpointY) && (_objectTopEdge < _bottomEdge))
+		if ((_objectRightEdge > _midpointX) && (_objectLeftEdge < _rightEdge) && (_objectBottomEdge > _midpointY) && (_objectTopEdge < _bottomEdge))
 		{
 			if (_southEastTree == null)
 			{
@@ -536,7 +501,7 @@ class FlxQuadTree extends FlxRect
 			}
 			_southEastTree.addObject();
 		}
-		if((_objectRightEdge > _leftEdge) && (_objectLeftEdge < _midpointX) && (_objectBottomEdge > _midpointY) && (_objectTopEdge < _bottomEdge))
+		if ((_objectRightEdge > _leftEdge) && (_objectLeftEdge < _midpointX) && (_objectBottomEdge > _midpointY) && (_objectTopEdge < _bottomEdge))
 		{
 			if (_southWestTree == null)
 			{
@@ -607,7 +572,7 @@ class FlxQuadTree extends FlxRect
 		if (_headA.object != null)
 		{
 			iterator = _headA;
-			while(iterator != null)
+			while (iterator != null)
 			{
 				_object = iterator.object;
 				if (_useBothLists)
@@ -618,9 +583,8 @@ class FlxQuadTree extends FlxRect
 				{
 					_iterator = iterator.next;
 				}
-				if (_object.exists && (_object.allowCollisions > 0) &&
-					(_iterator != null) && (_iterator.object != null) &&
-					_iterator.object.exists && overlapNode())
+				if (_object != null && _object.exists && _object.allowCollisions > 0 && 
+					_iterator != null && _iterator.object != null && overlapNode())
 				{
 					overlapProcessed = true;
 				}
@@ -655,47 +619,43 @@ class FlxQuadTree extends FlxRect
 	 */
 	private function overlapNode():Bool
 	{
+		//Calculate bulk hull for _object
+		_objectHullX = (_object.x < _object.last.x) ? _object.x : _object.last.x;
+		_objectHullY = (_object.y < _object.last.y) ? _object.y : _object.last.y;
+		_objectHullWidth = _object.x - _object.last.x;
+		_objectHullWidth = _object.width + ((_objectHullWidth > 0) ? _objectHullWidth : -_objectHullWidth);
+		_objectHullHeight = _object.y - _object.last.y;
+		_objectHullHeight = _object.height + ((_objectHullHeight > 0) ? _objectHullHeight : -_objectHullHeight);
+		
 		//Walk the list and check for overlaps
 		var overlapProcessed:Bool = false;
 		var checkObject:FlxObject;
+		
 		while (_iterator != null)
 		{
-			if (_object == null || (!_object.exists || (_object.allowCollisions <= 0)))
-			{
-				break;
-			}
-			
 			checkObject = _iterator.object;
-			if((_object == checkObject) || !checkObject.exists || (checkObject.allowCollisions <= 0))
+			if (_object == checkObject || !checkObject.exists || checkObject.allowCollisions <= 0)
 			{
 				_iterator = _iterator.next;
 				continue;
 			}
 			
-			//calculate bulk hull for _object
-			_objectHullX = (_object.x < _object.last.x)?_object.x:_object.last.x;
-			_objectHullY = (_object.y < _object.last.y)?_object.y:_object.last.y;
-			_objectHullWidth = _object.x - _object.last.x;
-			_objectHullWidth = _object.width + ((_objectHullWidth>0)?_objectHullWidth:-_objectHullWidth);
-			_objectHullHeight = _object.y - _object.last.y;
-			_objectHullHeight = _object.height + ((_objectHullHeight>0)?_objectHullHeight:-_objectHullHeight);
-			
-			//calculate bulk hull for checkObject
-			_checkObjectHullX = (checkObject.x < checkObject.last.x)?checkObject.x:checkObject.last.x;
-			_checkObjectHullY = (checkObject.y < checkObject.last.y)?checkObject.y:checkObject.last.y;
+			//Calculate bulk hull for checkObject
+			_checkObjectHullX = (checkObject.x < checkObject.last.x) ? checkObject.x : checkObject.last.x;
+			_checkObjectHullY = (checkObject.y < checkObject.last.y) ? checkObject.y : checkObject.last.y;
 			_checkObjectHullWidth = checkObject.x - checkObject.last.x;
-			_checkObjectHullWidth = checkObject.width + ((_checkObjectHullWidth>0)?_checkObjectHullWidth:-_checkObjectHullWidth);
+			_checkObjectHullWidth = checkObject.width + ((_checkObjectHullWidth > 0) ? _checkObjectHullWidth : -_checkObjectHullWidth);
 			_checkObjectHullHeight = checkObject.y - checkObject.last.y;
-			_checkObjectHullHeight = checkObject.height + ((_checkObjectHullHeight>0)?_checkObjectHullHeight:-_checkObjectHullHeight);
+			_checkObjectHullHeight = checkObject.height + ((_checkObjectHullHeight > 0) ? _checkObjectHullHeight : -_checkObjectHullHeight);
 			
-			//check for intersection of the two hulls
+			//Check for intersection of the two hulls
 			if ((_objectHullX + _objectHullWidth > _checkObjectHullX) &&
 				(_objectHullX < _checkObjectHullX + _checkObjectHullWidth) &&
 				(_objectHullY + _objectHullHeight > _checkObjectHullY) &&
 				(_objectHullY < _checkObjectHullY + _checkObjectHullHeight))
 			{
-				// Execute callback functions if they exist
-				if ((_processingCallback == null) || _processingCallback(_object, checkObject))
+				//Execute callback functions if they exist
+				if (_processingCallback == null || _processingCallback(_object, checkObject))
 				{
 					overlapProcessed = true;
 					if (_notifyCallback != null)

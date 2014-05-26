@@ -2,7 +2,6 @@
 
 import flixel.FlxSprite;
 import flixel.tweens.FlxTween;
-import flixel.tweens.FlxEase;
 import flixel.util.FlxRandom;
 
 /**
@@ -10,23 +9,23 @@ import flixel.util.FlxRandom;
  */
 class AngleTween extends FlxTween
 {
-	public var angle:Float = 0;
+	public var angle(default, null):Float;
 	
 	/**
 	 * Optional sprite object whose angle to tween
 	 */
-	public var sprite:FlxSprite;
+	public var sprite(default, null):FlxSprite;
 	
 	private var _start:Float;
 	private var _range:Float;
 	
 	/**
-	 * @param	Complete	Optional completion callback.
-	 * @param	type		Tween type.
+	 * Clean up references
 	 */
-	public function new(?Complete:CompleteCallback, type:Int = 0) 
+	override public function destroy()
 	{
-		super(0, type, Complete, null);
+		super.destroy();
+		sprite = null;
 	}
 	
 	/**
@@ -35,9 +34,8 @@ class AngleTween extends FlxTween
 	 * @param	FromAngle		Start angle.
 	 * @param	ToAngle			End angle.
 	 * @param	Duration		Duration of the tween.
-	 * @param	Ease			Optional easer function.
 	 */
-	public function tween(FromAngle:Float, ToAngle:Float, Duration:Float, ?Ease:EaseFunction, ?Sprite:FlxSprite):AngleTween
+	public function tween(FromAngle:Float, ToAngle:Float, Duration:Float, ?Sprite:FlxSprite):AngleTween
 	{
 		_start = angle = FromAngle;
 		var d:Float = ToAngle - angle;
@@ -55,13 +53,12 @@ class AngleTween extends FlxTween
 			_range = FlxRandom.floatRanged(180, -180);
 		}
 		duration = Duration;
-		ease = Ease;
 		sprite = Sprite;
 		start();
 		return this;
 	}
 	
-	override public function update():Void
+	override private function update():Void
 	{
 		super.update();
 		

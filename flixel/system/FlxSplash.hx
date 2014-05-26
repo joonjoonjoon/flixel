@@ -13,15 +13,10 @@ import flixel.tweens.FlxTween;
 import flixel.util.FlxColor;
 import flixel.util.FlxTimer;
 
-#if (!FLX_NO_SOUND_SYSTEM && FLX_NO_DEBUG)
-import flash.media.Sound;
-@:sound("assets/sounds/flixel.wav") class FlixelSound extends Sound {}
-#end
-
 class FlxSplash extends FlxState
 {
-	private var _nextState:Class<FlxState>;
-
+	public static var nextState:Class<FlxState>;
+	
 	private var _sprite:Sprite;
 	private var _gfx:Graphics;
 	private var _text:TextField;
@@ -34,15 +29,56 @@ class FlxSplash extends FlxState
 	private var _cachedTimestep:Bool;
 	private var _cachedAutoPause:Bool;
 	
-	public function new(NextState:Class<FlxState>)
+	override public function create():Void
 	{
-		_nextState = NextState;
-		super();
+		_cachedBgColor = FlxG.cameras.bgColor;
+		FlxG.cameras.bgColor = FlxColor.BLACK;
+		
+		// This is required for sound and animation to synch up properly
+		_cachedTimestep = FlxG.fixedTimestep;
+		FlxG.fixedTimestep = false; 
+		
+		_cachedAutoPause = FlxG.autoPause;
+		FlxG.autoPause = false;
+		
+		#if !FLX_NO_KEYBOARD
+		FlxG.keys.enabled = false;
+		#end
+		
+		_times = [0.041, 0.184, 0.334, 0.495, 0.636];
+		_colors = [0x00b922, 0xffc132, 0xf5274e, 0x3641ff, 0x04cdfb];
+		_functions = [drawGreen, drawYellow, drawRed, drawBlue, drawLightBlue];
+		
+		for (time in _times)
+		{
+			new FlxTimer(time, timerCallback);
+		}
+		
+		var stageWidth:Int = Lib.current.stage.stageWidth;
+		var stageHeight:Int = Lib.current.stage.stageHeight;
+		
+		_sprite = new Sprite();
+		FlxG.stage.addChild(_sprite);
+		_gfx = _sprite.graphics;
+		
+		_text = new TextField();
+		_text.selectable = false;
+		_text.embedFonts = true;
+		var dtf:TextFormat = new TextFormat(FlxAssets.FONT_DEFAULT, 16, 0xffffff);
+		dtf.align = TextFormatAlign.CENTER;
+		_text.defaultTextFormat = dtf;
+		_text.text = "HaxeFlixel";
+		FlxG.stage.addChild(_text);
+		
+		onResize(stageWidth, stageHeight);
+		
+		#if !FLX_NO_SOUND_SYSTEM 
+		FlxG.sound.load(FlxAssets.getSound("assets/sounds/flixel")).play();
+		#end
 	}
 	
 	override public function destroy():Void 
 	{
-		_nextState = null;
 		_sprite = null;
 		_gfx = null;
 		_text = null;
@@ -67,54 +103,6 @@ class FlxSplash extends FlxState
 		_sprite.scaleY = _text.scaleY = FlxG.game.scaleY;
 	}
 	
-	override public function create():Void
-	{
-		_cachedBgColor = FlxG.cameras.bgColor;
-		FlxG.cameras.bgColor = FlxColor.BLACK;
-		
-		// This is required for sound and animation to synch up properly
-		_cachedTimestep = FlxG.fixedTimestep;
-		FlxG.fixedTimestep = false; 
-		
-		_cachedAutoPause = FlxG.autoPause;
-		FlxG.autoPause = false;
-		
-		#if !FLX_NO_KEYBOARD
-			FlxG.keys.enabled = false;
-		#end
-		
-		_times = [0.041, 0.184, 0.334, 0.495, 0.636];
-		_colors = [0x00b922, 0xffc132, 0xf5274e, 0x3641ff, 0x04cdfb];
-		_functions = [drawGreen, drawYellow, drawRed, drawBlue, drawLightBlue];
-		
-		for (time in _times)
-		{
-			FlxTimer.start(time, timerCallback);
-		}
-		
-		var stageWidth:Int = Lib.current.stage.stageWidth;
-		var stageHeight:Int = Lib.current.stage.stageHeight;
-		
-		_sprite = new Sprite();
-		FlxG.stage.addChild(_sprite);
-		_gfx = _sprite.graphics;
-		
-		_text = new TextField();
-		_text.selectable = false;
-		_text.embedFonts = true;
-		var dtf:TextFormat = new TextFormat(FlxAssets.FONT_DEFAULT, 16, 0xffffff);
-		dtf.align = TextFormatAlign.CENTER;
-		_text.defaultTextFormat = dtf;
-		_text.text = "HaxeFlixel";
-		FlxG.stage.addChild(_text);
-		
-		onResize(stageWidth, stageHeight);
-		
-		#if (!FLX_NO_SOUND_SYSTEM && FLX_NO_DEBUG)
-		FlxG.sound.load(FlixelSound).play();
-		#end
-	}
-	
 	private function timerCallback(Timer:FlxTimer):Void
 	{
 		_functions[_curPart]();
@@ -125,8 +113,8 @@ class FlxSplash extends FlxState
 		if (_curPart == 5)
 		{
 			// Make the logo a tad bit longer, so our users fully appreciate our hard work :D
-			FlxTween.multiVar(_sprite, { alpha: 0 }, 3.0, { ease: FlxEase.quadOut, complete: onComplete } );
-			FlxTween.multiVar(_text, { alpha: 0 }, 3.0, { ease: FlxEase.quadOut } );
+			FlxTween.tween(_sprite, { alpha: 0 }, 3.0, { ease: FlxEase.quadOut, complete: onComplete } );
+			FlxTween.tween(_text, { alpha: 0 }, 3.0, { ease: FlxEase.quadOut } );
 		}
 	}
 	
@@ -203,7 +191,7 @@ class FlxSplash extends FlxState
 		#end
 		FlxG.stage.removeChild(_sprite);
 		FlxG.stage.removeChild(_text);
-		FlxG.switchState(Type.createInstance(_nextState, []));
+		FlxG.switchState(Type.createInstance(nextState, []));
 		FlxG.game._gameJustStarted = true;
 	}
 }

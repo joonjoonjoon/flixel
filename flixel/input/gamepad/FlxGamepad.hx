@@ -1,18 +1,27 @@
 package flixel.input.gamepad;
 
+import flixel.FlxG;
 import flixel.interfaces.IFlxDestroyable;
+import flixel.util.FlxDestroyUtil;
 import flixel.util.FlxPoint;
 
+#if flash
+import flash.ui.GameInputControl;
+import flash.ui.GameInputDevice;
+import flash.system.Capabilities;
+#end
+
+@:allow(flixel.input.gamepad)
 class FlxGamepad implements IFlxDestroyable
 {
 	// Button States (mirrors Key States in FlxKey.hx)
-	public static inline var JUST_RELEASED	:Int = -1;
-	public static inline var RELEASED		:Int = 0;
-	public static inline var PRESSED		:Int = 1;
-	public static inline var JUST_PRESSED	:Int = 2;
+	public static inline var JUST_RELEASED:Int = -1;
+	public static inline var RELEASED:Int = 0;
+	public static inline var PRESSED:Int = 1;
+	public static inline var JUST_PRESSED:Int = 2;
 	
 	public var id:Int;
-	public var buttons:Map<Int, FlxGamepadButton>;
+	public var buttons:Array<FlxGamepadButton>;
 	
 	/**
 	 * Gamepad deadzone. Sets the sensibility. 
@@ -23,6 +32,7 @@ class FlxGamepad implements IFlxDestroyable
 	/**
 	 * DPAD
 	 */
+	#if !flash
 	public var hat:FlxPoint;
 	public var ball:FlxPoint;
 	
@@ -30,35 +40,42 @@ class FlxGamepad implements IFlxDestroyable
 	public var dpadDown(get, null):Bool = false;
 	public var dpadLeft(get, null):Bool = false;
 	public var dpadRight(get, null):Bool = false;
+	#end
 	
 	/**
 	 * Axis array is read-only, use "getAxis" function for deadZone checking.
 	 */
-	@:allow(flixel.input.gamepad)
 	private var axis:Array<Float>;
+	
+	#if flash
+	private var _device:GameInputDevice; 
+	#end
 	
 	public function new(ID:Int, GlobalDeadZone:Float = 0) 
 	{
-		buttons = new Map<Int, FlxGamepadButton>();
+		buttons = [];
 		axis = [for (i in 0...6) 0];
-		ball = new FlxPoint();
-		hat = new FlxPoint();
 		id = ID;
 		
 		if (GlobalDeadZone != 0)
 		{
 			deadZone = GlobalDeadZone;
 		}
+		
+		#if !flash
+		ball = FlxPoint.get();
+		hat = FlxPoint.get();
+		#end
 	}
 	
 	public function getButton(ButtonID:Int):FlxGamepadButton
 	{
-		var gamepadButton:FlxGamepadButton = buttons.get(ButtonID);
+		var gamepadButton:FlxGamepadButton = buttons[ButtonID];
 		
 		if (gamepadButton == null)
 		{
 			gamepadButton = new FlxGamepadButton(ButtonID);
-			buttons.set(ButtonID, gamepadButton);
+			buttons[ButtonID] = gamepadButton;
 		}
 		
 		return gamepadButton;
@@ -69,8 +86,39 @@ class FlxGamepad implements IFlxDestroyable
 	 */
 	public function update():Void
 	{
+		#if flash
+		var control:GameInputControl;
+		var button:FlxGamepadButton;
+		
+		if (_device == null)
+		{
+			return;
+		}
+		
+		for (i in 0..._device.numControls)
+		{
+			control = _device.getControlAt(i);
+			var value = control.value;
+			button = getButton(i);
+			
+			if (value == 0)
+			{
+				button.release();
+			}
+			else if (value > deadZone)
+			{
+				button.press();
+			}
+		}
+		#end
+		
 		for (button in buttons)
 		{
+			if (button == null) 
+			{
+				return;
+			}
+			
 			if ((button.last == -1) && (button.current == -1)) 
 			{
 				button.current = 0;
@@ -79,7 +127,7 @@ class FlxGamepad implements IFlxDestroyable
 			{
 				button.current = 1;
 			}
-
+			
 			button.last = button.current;
 		}
 	}
@@ -88,8 +136,11 @@ class FlxGamepad implements IFlxDestroyable
 	{
 		for (button in buttons)
 		{
-			button.current = 0;
-			button.last = 0;
+			if (button != null)
+			{
+				button.current = 0;
+				button.last = 0;
+			}
 		}
 		
 		var numAxis:Int = axis.length;
@@ -99,16 +150,24 @@ class FlxGamepad implements IFlxDestroyable
 			axis[i] = 0;
 		}
 		
+		#if !flash
 		hat.set();
 		ball.set();
+		#end
 	}
 	
 	public function destroy():Void
 	{
 		buttons = null;
 		axis = null;
+		
+		#if !flash
+		hat = FlxDestroyUtil.put(hat);
+		ball = FlxDestroyUtil.put(ball);
+		
 		hat = null;
 		ball = null;
+		#end
 	}
 	
 	/**
@@ -120,29 +179,94 @@ class FlxGamepad implements IFlxDestroyable
 	 */
 	public function checkStatus(ButtonID:Int, Status:Int):Bool 
 	{ 
-		if (buttons.exists(ButtonID))
+		if (buttons[ButtonID] != null)
 		{
-			return (buttons.get(ButtonID).current == Status);
+			return (buttons[ButtonID].current == Status);
 		}
+		return false;
+	}
+	
+	/**
+	 * Check if at least one button from an array of button IDs is pressed.
+	 * 
+	 * @param	ButtonIDArray	An array of button IDs
+	 * @return	Whether at least one of the buttons is pressed
+	 */
+	public function anyPressed(ButtonIDArray:Array<Int>):Bool
+	{
+		for (b in ButtonIDArray)
+		{
+			if (buttons[b] != null)
+			{
+				if (buttons[b].current == PRESSED)
+					return true;
+			}
+		}
+		
+		return false;
+	}
+	
+	/**
+	 * Check if at least one button from an array of button IDs was just pressed.
+	 * 
+	 * @param	ButtonArray	An array of button IDs
+	 * @return	Whether at least one of the buttons was just pressed
+	 */
+	public function anyJustPressed(ButtonIDArray:Array<Int>):Bool
+	{
+		for (b in ButtonIDArray)
+		{
+			if (buttons[b] != null)
+			{
+				if (buttons[b].current == JUST_PRESSED)
+					return true;
+			}
+		}
+		
+		return false;
+	}
+	
+	/**
+	 * Check if at least one button from an array of button IDs was just released.
+	 * 
+	 * @param	ButtonArray	An array of button IDs
+	 * @return	Whether at least one of the buttons was just released
+	 */
+	public function anyJustReleased(ButtonIDArray:Array<Int>):Bool
+	{
+		for (b in ButtonIDArray)
+		{
+			if (buttons[b] != null)
+			{
+				if (buttons[b].current == JUST_RELEASED)
+					return true;
+			}
+		}
+		
 		return false;
 	}
 	
 	/**
 	 * Check to see if this button is pressed.
 	 * 
-	 * @param	ButtonID	The button id (from 0 to 7).
+	 * @param	ButtonID	The button ID.
 	 * @return	Whether the button is pressed
 	 */
 	public function pressed(ButtonID:Int):Bool 
 	{
-		#if (cpp || neko)
-		if (buttons.exists(ButtonID))
-		{
-			return (buttons.get(ButtonID).current > RELEASED);
+		#if js
+		var pad:js.html.Gamepad = null,
+			nav:js.html.Navigator = untyped navigator;
+		if (untyped nav.webkitGetGamepads != null) 
+		{ // if browser has webkit gamepads as such
+			pad = untyped nav.webkitGetGamepads().item(id);
 		}
-		#elseif js
-			var v = untyped navigator.webkitGetGamepads().item(id).buttons[ButtonID];
-			return if (Math.round(v) == 1) true else false;
+		return (pad != null) && (Math.round(pad.buttons[ButtonID]) == 1);
+		#else
+		if (buttons[ButtonID] != null)
+		{
+			return (buttons[ButtonID].current > RELEASED);
+		}
 		#end
 		
 		return false;
@@ -151,30 +275,30 @@ class FlxGamepad implements IFlxDestroyable
 	/**
 	 * Check to see if this button was just pressed.
 	 * 
-	 * @param	ButtonID	The button id (from 0 to 7).
+	 * @param	ButtonID	The button ID.
 	 * @return	Whether the button was just pressed
 	 */
 	public function justPressed(ButtonID:Int):Bool 
 	{ 
-		if (buttons.exists(ButtonID))
+		if (buttons[ButtonID] != null)
 		{
-			return (buttons.get(ButtonID).current == JUST_PRESSED);
+			return (buttons[ButtonID].current == JUST_PRESSED);
 		}
 		
 		return false;
 	}
 	
 	/**
-	 * Check to see if this button is just released.
+	 * Check to see if this button was just released.
 	 * 
-	 * @param	buttonID	The button id (from 0 to 7).
-	 * @return	Whether the button is just released.
+	 * @param	ButtonID	The button ID.
+	 * @return	Whether the button was just released.
 	 */
 	public function justReleased(ButtonID:Int):Bool 
 	{ 
-		if (buttons.exists(ButtonID))
+		if (buttons[ButtonID] != null)
 		{
-			return (buttons.get(ButtonID).current == JUST_RELEASED);
+			return (buttons[ButtonID].current == JUST_RELEASED);
 		}
 		
 		return false;
@@ -188,7 +312,7 @@ class FlxGamepad implements IFlxDestroyable
 	{
 		for (button in buttons)
 		{
-			if (button.current > RELEASED)
+			if (button != null && button.current > RELEASED)
 			{
 				return button.id;
 			}
@@ -205,7 +329,7 @@ class FlxGamepad implements IFlxDestroyable
 	{
 		for (button in buttons)
 		{
-			if (button.current == JUST_PRESSED)
+			if (button != null && button.current == JUST_PRESSED)
 			{
 				return button.id;
 			}
@@ -222,37 +346,53 @@ class FlxGamepad implements IFlxDestroyable
 	{
 		for (button in buttons)
 		{
-			if (button.current == JUST_RELEASED)
+			if (button != null && button.current == JUST_RELEASED)
 			{
 				return button.id;
 			}
 		}
 		
-		return -1;
+		return -1; 
 	}
 	
-	public function getAxis(AxisID:Int):Float
+	/**
+	 * Gets the value of the specified axis - DOES NOT WORK WELL ON 
+	 * THE FLASH TARGET, use getXAxis() and getYAxis() instead.
+	 */
+	public inline function getAxis(AxisID:Int):Float
 	{
-		if (AxisID < 0 || AxisID >= axis.length)
-		{
-			return 0;
-		}
+		return getAxisValue(AxisID);
+	}
+	
+	/**
+	 * Gets the value of the specified X axis.
+	 */
+	public inline function getXAxis(AxisID:Int):Float
+	{
+		return getAxisValue(AxisID);
+	}
+	
+	/**
+	 * Gets the value of the specified Y axis - 
+	 * should be used in flash to correct the inverted y axis.
+	 */
+	public function getYAxis(AxisID:Int):Float
+	{
+		var axisValue = getAxisValue(AxisID);
 		
-		#if (cpp || neko)
-		if (Math.abs(axis[AxisID]) > deadZone)
+		// the y axis is inverted on the Xbox gamepad in flash for some reason - but not in Chrome!
+		// WARNING: this causes unnecessary string allocations - we should remove this hack when possible.
+		#if flash
+		if ((_device != null) && _device.enabled && (_device.name.indexOf("Xbox") != -1) && 
+		   (Capabilities.manufacturer != "Google Pepper"))
 		{
-			return axis[AxisID];
-		}
-		#elseif js
-		var v:Float = untyped navigator.webkitGetGamepads().item(id).axes[AxisID];
-		if (Math.abs(v) > deadZone)
-		{
-			return Math.round(v);
+			axisValue = -axisValue;
 		}
 		#end
-		return 0;
+		
+		return axisValue;
 	}
-	
+
 	/**
 	 * Check to see if any buttons are pressed right now.
 	 */
@@ -260,7 +400,7 @@ class FlxGamepad implements IFlxDestroyable
 	{
 		for (button in buttons)
 		{
-			if (button.current > RELEASED)
+			if (button != null && button.current > RELEASED)
 			{
 				return true;
 			}
@@ -287,6 +427,7 @@ class FlxGamepad implements IFlxDestroyable
 			}
 		}
 		
+		#if !flash
 		if (ball.x != 0 || ball.y != 0)
 		{
 			return true;
@@ -296,15 +437,44 @@ class FlxGamepad implements IFlxDestroyable
 		{
 			return true;
 		}
+		#end
 		
 		return false;
 	}
 	
-	/**
-	 * DPAD accessor properties
-	 */
-	private inline function get_dpadUp():Bool { return hat.y < 0; }
-	private inline function get_dpadDown():Bool { return hat.y > 0; }
-	private inline function get_dpadLeft():Bool { return hat.x < 0; }
+	private function getAxisValue(AxisID:Int):Float
+	{
+		if (AxisID < 0 || AxisID >= axis.length)
+		{
+			return 0;
+		}
+		
+		var axisValue:Float = 0;
+		
+		#if flash
+		if ((_device != null) && _device.enabled)
+		{
+			axisValue = _device.getControlAt(AxisID).value;
+		}
+		#elseif js
+		// TODO: fix this for html5
+		//axisValue = untyped navigator.webkitGetGamepads().item(id).axes[AxisID];
+		#else
+		axisValue = axis[AxisID];
+		#end
+		
+		if (Math.abs(axisValue) > deadZone)
+		{
+			return axisValue;
+		}
+		
+		return 0;
+	}
+	
+	#if !flash
+	private inline function get_dpadUp():Bool    { return hat.y < 0; }
+	private inline function get_dpadDown():Bool  { return hat.y > 0; }
+	private inline function get_dpadLeft():Bool  { return hat.x < 0; }
 	private inline function get_dpadRight():Bool { return hat.x > 0; }
+	#end
 }

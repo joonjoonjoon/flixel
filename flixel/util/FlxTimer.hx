@@ -2,6 +2,8 @@ package flixel.util;
 
 import flixel.FlxG;
 import flixel.plugin.TimerManager;
+import flixel.interfaces.IFlxDestroyable;
+import flixel.system.frontEnds.PluginFrontEnd;
 
 /**
  * A simple timer class, leveraging the new plugins system.
@@ -9,9 +11,12 @@ import flixel.plugin.TimerManager;
  * Not intended to be added to a game state or group; the timer manager
  * is responsible for actually calling update(), not the user.
  */
-class FlxTimer
+class FlxTimer implements IFlxDestroyable
 {
-	private static var pool:FlxPool<FlxTimer> = new FlxPool<FlxTimer>();
+	/**
+	 * The TimerManager instance.
+	 */
+	public static var manager:TimerManager;
 	
 	/**
 	 * How much time the timer was set for.
@@ -24,25 +29,37 @@ class FlxTimer
 	/**
 	 * Pauses or checks the pause state of the timer.
 	 */
-	public var paused:Bool = false;
+	public var active:Bool = true;
 	/**
 	 * Check to see if the timer is finished.
 	 */
 	public var finished:Bool = false;
 	/**
-	 * Useful to store values you want to access within your callback function, ex:
-	 * FlxTimer.start(1, function(t) { trace(t.userData); } ).userData = "Hello World!";
-	 */
-	public var userData:Dynamic = null;
-	/**
-	 * Whether to reset and put this FlxTimer object into internal timers pool automatically after it finishes it's work.
-	 */
-	public var usePooling:Bool = true;
-	/**
 	 * Function that gets called when timer completes.
 	 * Callback should be formed "onTimer(Timer:FlxTimer);"
 	 */
-	public var complete:FlxTimer->Void = null;
+	public var complete:FlxTimer->Void;
+	/**
+	 * Read-only: check how much time is left on the timer.
+	 */
+	public var timeLeft(get, never):Float;
+	/**
+	 * Read-only: The amount of milliseconds that have elapsed since the timer was started
+	 */
+	public var elapsedTime(get, never):Float;
+	/**
+	 * Read-only: check how many loops are left on the timer.
+	 */
+	public var loopsLeft(get, never):Int;
+	/**
+	 * Read-only: how many loops that have elapsed since the timer was started.
+	 */
+	public var elapsedLoops(get, never):Int;
+	/**
+	 * Read-only: how far along the timer is, on a scale of 0.0 to 1.0.
+	 */
+	public var progress(get, never):Float;
+	
 	/**
 	 * Internal tracker for the actual timer counting up.
 	 */
@@ -53,10 +70,19 @@ class FlxTimer
 	private var _loopsCounter:Int = 0;
 	
 	/**
-	 * Internal constructor.
-	 * This is private, use recycle() or start() to get timers instead.
+	 * Creates a new timer (and calls start() right away if Time != null).
+	 * 
+	 * @param	Time		How many seconds it takes for the timer to go off.
+	 * @param	Callback	Optional, triggered whenever the time runs out, once for each loop. Callback should be formed "onTimer(Timer:FlxTimer);"
+	 * @param	Loops		How many times the timer should go off. 0 means "looping forever".
 	 */
-	private function new() { }
+	public function new(?Time:Null<Float>, ?Callback:FlxTimer->Void, Loops:Int = 1)
+	{
+		if (Time != null)
+		{
+			start(Time, Callback, Loops);
+		}
+	}
 	
 	/**
 	 * Clean up memory.
@@ -64,29 +90,6 @@ class FlxTimer
 	public function destroy():Void
 	{
 		complete = null;
-		userData = null;
-	}
-	
-	/**
-	 * Returns a recycled timer.
-	 */
-	public static function recycle():FlxTimer
-	{
-		return pool.get();
-	}
-	
-	/**
-	 * Returns a recycled timer and starts it.
-	 * 
-	 * @param	Time		How many seconds it takes for the timer to go off.
-	 * @param	Callback	Optional, triggered whenever the time runs out, once for each loop. Callback should be formed "onTimer(Timer:FlxTimer);"
-	 * @param	Loops		How many times the timer should go off. 0 means "looping forever".
- 	 */
-	public static function start(Time:Float = 1, ?Callback:FlxTimer->Void, Loops:Int = 1):FlxTimer
-	{
-		var timer:FlxTimer = recycle();
-		timer.run(Time, Callback, Loops);
-		return timer;
 	}
 	
 	/**
@@ -97,14 +100,14 @@ class FlxTimer
 	 * @param	Loops		How many times the timer should go off. 0 means "looping forever".
 	 * @return	A reference to itself (handy for chaining or whatever).
 	 */
-	public function run(Time:Float = 1, ?Callback:FlxTimer->Void, Loops:Int = 1):Void
+	public function start(Time:Float = 1, ?Callback:FlxTimer->Void, Loops:Int = 1):FlxTimer
 	{
 		if (manager != null)
 		{
 			manager.add(this);
 		}
 		
-		paused = false;
+		active = true;
 		finished = false;
 		time = Math.abs(Time);
 		
@@ -117,6 +120,7 @@ class FlxTimer
 		complete = Callback;
 		_timeCounter = 0;
 		_loopsCounter = 0;
+		return this;
 	}
 	
 	/**
@@ -129,19 +133,19 @@ class FlxTimer
 		{
 			NewTime = time;
 		}
-		run(NewTime, complete, loops);
+		start(NewTime, complete, loops);
 		return this;
 	}
 	
 	/**
 	 * Stops the timer and removes it from the timer manager.
 	 */
-	public function abort():Void
+	public function cancel():Void
 	{
 		finished = true;
 		if (manager != null)
 		{
-			manager.remove(this, usePooling);
+			manager.remove(this);
 		}
 	}
 	
@@ -155,7 +159,7 @@ class FlxTimer
 	{
 		_timeCounter += FlxG.elapsed;
 		
-		while ((_timeCounter >= time) && !paused && !finished)
+		while ((_timeCounter >= time) && active && !finished)
 		{
 			_timeCounter -= time;
 			_loopsCounter++;
@@ -167,75 +171,33 @@ class FlxTimer
 			
 			if (loops > 0 && (_loopsCounter >= loops))
 			{
-				abort();
+				cancel();
 			}
 		}
 	}
-	
-	/**
-	 * Read-only: check how much time is left on the timer.
-	 */
-	public var timeLeft(get, never):Float;
 	
 	private inline function get_timeLeft():Float
 	{
 		return time - _timeCounter;
 	}
 	
-	/**
-	 * Read-only: The amount of milliseconds that have elapsed since the timer was started
-	 */
-	public var elapsedTime(get, never):Float;
-	
 	private inline function get_elapsedTime():Float
 	{
 		return _timeCounter;
 	}
-	
-	/**
-	 * Read-only: check how many loops are left on the timer.
-	 */
-	public var loopsLeft(get, never):Int;
 	
 	private inline function get_loopsLeft():Int
 	{
 		return loops - _loopsCounter;
 	}
 	
-	/**
-	 * Read-only: how many loops that have elapsed since the timer was started.
-	 */
-	public var elapsedLoops(get, never):Int;
-	
 	private inline function get_elapsedLoops():Int
 	{
 		return _loopsCounter;
 	}
 	
-	/**
-	 * Read-only: how far along the timer is, on a scale of 0.0 to 1.0.
-	 */
-	public var progress(get_progress, never):Float;
-	
 	private inline function get_progress():Float
 	{
-		if (time > 0)
-		{
-			return _timeCounter / time;
-		}
-		else
-		{
-			return 0;
-		}
+		return (time > 0) ? (_timeCounter / time) : 0;
 	}
-	
-	public static function put(timer:FlxTimer):Void
-	{
-		pool.put(timer);
-	}
-	
-	/**
-	 * Read-only: The TimerManager instance.
-	 */
-	public static var manager:TimerManager;
 }

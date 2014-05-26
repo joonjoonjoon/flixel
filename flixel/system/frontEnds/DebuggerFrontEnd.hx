@@ -2,17 +2,16 @@ package flixel.system.frontEnds;
 
 import flash.display.BitmapData;
 import flixel.FlxG;
+import flixel.system.debug.Tracker;
 import flixel.system.debug.FlxDebugger.ButtonAlignment;
 import flixel.system.debug.FlxDebugger.DebuggerLayout;
+import flixel.system.debug.Window;
 import flixel.system.ui.FlxSystemButton;
+import flixel.util.FlxStringUtil;
+import flixel.util.FlxSignal;
 
 class DebuggerFrontEnd
 {	
-	/**
-	 * Whether to draw the hitboxes of FlxObjects.
-	 */
-	public var drawDebug:Bool = false;
-	
 	/**
 	 * The amount of decimals FlxPoints / FlxRects are rounded to in log / watch / trace.
 	 */
@@ -22,10 +21,18 @@ class DebuggerFrontEnd
 	/**
 	 * The key codes used to toggle the debugger (see FlxG.keys for the keys available).
 	 * Default keys: ` and \. Set to null to deactivate.
-	 * @default ["GRAVEACCENT", "BACKSLASH"]
 	 */
 	public var toggleKeys:Array<String>;
 	#end
+	
+	/**
+	 * Whether to draw the hitboxes of FlxObjects.
+	 */
+	public var drawDebug(default, set):Bool = false;
+	/**
+	 * Dispatched when drawDebug is changed.
+	 */
+	public var drawDebugChanged(default, null):FlxSignal;
 	
 	public var visible(default, set):Bool = false;
 	
@@ -71,6 +78,50 @@ class DebuggerFrontEnd
 	}
 	
 	/**
+	 * Creates a new tracker window, if there exists a tracking profile for the class of the object.
+	 * By default, flixel classes like FlxBasics, FlxRect and FlxPoint are supported.
+	 * 
+	 * @param	Object	The object to track
+	 * @param	WindowTitle	Title for the tracker window, uses the Object's class name by default
+	 */
+	public function track(Object:Dynamic, ?WindowTitle:String):Window
+	{
+		#if !FLX_NO_DEBUG
+		if (Lambda.indexOf(Tracker.objectsBeingTracked, Object) == -1)
+		{
+			var profile = Tracker.findProfile(Object);
+			if (profile == null)
+			{
+				FlxG.log.error("FlxG.debugger.track(): Could not find a tracking profile for this object of class '" + FlxStringUtil.getClassName(Object, true) + "'."); 
+				return null;
+			}
+			else 
+			{
+				return FlxG.game.debugger.addWindow(new Tracker(profile, Object, WindowTitle));
+			}
+		}
+		else 
+		{
+			return null;
+		}
+		#else 
+		return null;
+		#end
+	}
+	
+	/**
+	 * Adds a new TrackerProfile for track(). This also overrides existing profiles.
+	 * 
+	 * @param	Profile	The TrackerProfile
+	 */
+	public inline function addTrackerProfile(Profile:TrackerProfile):Void
+	{
+		#if !FLX_NO_DEBUG
+		Tracker.addProfile(Profile);
+		#end
+	}
+	
+	/**
 	 * Removes and destroys a button from the debugger.
 	 * 
 	 * @param	Button			The FlxSystemButton instance to remove.
@@ -89,14 +140,25 @@ class DebuggerFrontEnd
 		#if !FLX_NO_KEYBOARD
 		toggleKeys = ["GRAVEACCENT", "BACKSLASH"];
 		#end
+		drawDebugChanged = new FlxSignal();
 	}
 	
-	private inline function set_visible(Visible:Bool):Bool
+	private inline function set_drawDebug(Value:Bool):Bool
 	{
 		#if !FLX_NO_DEBUG
-		FlxG.game.debugger.visible = Visible;
+		if (Value != drawDebug)
+			drawDebugChanged.dispatch();
 		#end
 		
-		return visible = Visible;
+		return drawDebug = Value;
+	}
+	
+	private inline function set_visible(Value:Bool):Bool
+	{
+		#if !FLX_NO_DEBUG
+		FlxG.game.debugger.visible = Value;
+		#end
+		
+		return visible = Value;
 	}
 }

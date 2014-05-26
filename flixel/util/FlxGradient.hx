@@ -30,11 +30,15 @@ class FlxGradient
 		//	Last 2 values = horizontal and vertical shift (in pixels)
 		if (chunkSize == 1)
 		{
+			#if !bitfive
 			gradientMatrix.createGradientBox(width, height, rot, 0, 0);
+			#end
 		}
 		else
 		{
+			#if !bitfive
 			gradientMatrix.createGradientBox(width, height / chunkSize, rot, 0, 0);
+			#end
 		}
 		
 		//	Create the alpha and ratio arrays
@@ -117,7 +121,7 @@ class FlxGradient
 			height = 1;
 		}
 		
-		#if !flash
+		#if FLX_RENDER_TILE
 		var key:String = "Gradient: " + width + " x " + height + ", colors: [";
 		var a:Int;
 		var rgb:Int;
@@ -142,11 +146,15 @@ class FlxGradient
 		
 		if (interpolate)
 		{
+			#if !bitfive
 			s.graphics.beginGradientFill(GradientType.LINEAR, cast(colors), gradient.alpha, gradient.ratio, gradient.matrix, SpreadMethod.PAD, InterpolationMethod.RGB, 0);
+			#end
 		}
 		else
 		{
+			#if !bitfive
 			s.graphics.beginGradientFill(GradientType.LINEAR, cast(colors), gradient.alpha, gradient.ratio, gradient.matrix, SpreadMethod.PAD, InterpolationMethod.LINEAR_RGB, 0);
+			#end
 		}
 		
 		if (chunkSize == 1)
@@ -176,7 +184,7 @@ class FlxGradient
 			data.draw(tempBitmap, sM);
 		}
 		
-		#if !flash
+		#if FLX_RENDER_TILE
 		FlxG.bitmap.add(data, false, key);
 		#end
 		
@@ -212,6 +220,7 @@ class FlxGradient
 		
 		var source:FlxSprite = createGradientFlxSprite(width, height, colors, chunkSize, rotation, interpolate);
 		dest.stamp(source, destX, destY);
+		source.destroy();
 		return dest;
 	}
 	
@@ -243,9 +252,8 @@ class FlxGradient
 		}
 		
 		var source:BitmapData = createGradientBitmapData(width, height, colors, chunkSize, rotation, interpolate);
-		
 		dest.copyPixels(source, new Rectangle(0, 0, source.width, source.height), new Point(destX, destY), null, null, true);
-		
+		source.dispose();
 		return dest;
 	}
 	

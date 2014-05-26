@@ -104,7 +104,7 @@ class FlxSpriteFilter
 	
 	public function destroy():Void
 	{
-		filters = [];
+		filters = null;
 		sprite = null;
 		backupGraphics = null;
 		backupRegion = null;
@@ -140,7 +140,7 @@ class FlxSpriteFilter
 		
 		var cached:CachedGraphics = FlxG.bitmap.add(pixels);
 		var textureReg:TextureRegion = new TextureRegion(cached, 0, 0, width, height, 1, 1, pixels.width, pixels.height);
-		sprite.loadGraphic(textureReg, sprite.frames > 1, sprite.flipped > 0, width, height);
+		sprite.loadGraphic(textureReg, sprite.frames > 1, width, height);
 	}
 	
 	private function regenBitmapData(fill:Bool = true):Void

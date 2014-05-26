@@ -1,7 +1,7 @@
 ﻿package flixel.tweens.motion;
 
 import flixel.tweens.FlxEase.EaseFunction;
-import flixel.tweens.FlxTween.CompleteCallback;
+import flixel.tweens.FlxTween;
 
 /**
  * Determines motion along a cubic curve.
@@ -9,27 +9,16 @@ import flixel.tweens.FlxTween.CompleteCallback;
 class CubicMotion extends Motion
 {
 	// Curve information.
-	private var _fromX:Float;
-	private var _fromY:Float;
-	private var _toX:Float;
-	private var _toY:Float;
-	private var _aX:Float;
-	private var _aY:Float;
-	private var _bX:Float;
-	private var _bY:Float;
-	private var _ttt:Float;
-	private var _tt:Float;
-	
-	/**
-	 * @param	complete	Optional completion callback.
-	 * @param	type		Tween type.
-	 */
-	public function new(?complete:CompleteCallback, type:Int = 0)
-	{
-		_fromX = _fromY = _toX = _toY = 0;
-		_aX = _aY = _bX = _bY = 0;
-		super(0, complete, type, null);
-	}
+	private var _fromX:Float = 0;
+	private var _fromY:Float = 0;
+	private var _toX:Float = 0;
+	private var _toY:Float = 0;
+	private var _aX:Float = 0;
+	private var _aY:Float = 0;
+	private var _bX:Float = 0;
+	private var _bY:Float = 0;
+	private var _ttt:Float = 0;
+	private var _tt:Float = 0;
 	
 	/**
 	 * Starts moving along the curve.
@@ -43,9 +32,8 @@ class CubicMotion extends Motion
 	 * @param	toX			X finish.
 	 * @param	toY			Y finish.
 	 * @param	duration	Duration of the movement.
-	 * @param	ease		Optional easer function.
 	 */
-	public function setMotion(fromX:Float, fromY:Float, aX:Float, aY:Float, bX:Float, bY:Float, toX:Float, toY:Float, duration:Float, ?ease:EaseFunction):CubicMotion
+	public function setMotion(fromX:Float, fromY:Float, aX:Float, aY:Float, bX:Float, bY:Float, toX:Float, toY:Float, duration:Float):CubicMotion
 	{
 		x = _fromX = fromX;
 		y = _fromY = fromY;
@@ -56,12 +44,11 @@ class CubicMotion extends Motion
 		_toX = toX;
 		_toY = toY;
 		this.duration = duration;
-		this.ease = ease;
 		start();
 		return this;
 	}
 	
-	override public function update():Void
+	override private function update():Void
 	{
 		super.update();
 		x = scale * scale * scale * (_toX + 3 * (_aX - _bX) - _fromX) + 3 * scale * scale * (_fromX - 2 * _aX + _bX) + 3 * scale * (_aX - _fromX) + _fromX;

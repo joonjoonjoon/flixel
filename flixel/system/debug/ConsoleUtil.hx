@@ -3,6 +3,7 @@ package flixel.system.debug;
 import flash.errors.ArgumentError;
 import flixel.FlxG;
 import flixel.system.debug.Console.Command;
+import flixel.system.debug.ConsoleUtil.PathToVariable;
 import flixel.util.FlxArrayUtil;
 import flixel.util.FlxStringUtil;
 
@@ -84,11 +85,11 @@ class ConsoleUtil
 	 * @param	Params		An optional array of constructor params
 	 * @return	The created instance, or null
 	 */
-	@:generic public static function attemptToCreateInstance<T>(ClassName:String, type:Class<T>, ?Params:Array<String>):Dynamic
+	@:generic
+	public static function attemptToCreateInstance<T>(ClassName:String, type:Class<T>, ?Params:Array<String>):Dynamic
 	{
-		if (Params == null) {
+		if (Params == null)
 			Params = [];
-		}
 		
 		var obj:Dynamic = Type.resolveClass(ClassName);
 		if (!Reflect.isObject(obj)) 
@@ -109,36 +110,33 @@ class ConsoleUtil
 	}
 	
 	/**
-	 * Helper function for the set command. Attempts to find the object which contains the variable to set
-	 * from the String path, like "FlxG.state.sprite.x" so it can be set via Reflection.
+	 * Attempts to find the object which contains the variable to set  from the String 
+	 * path, like "FlxG.state.sprite.x" so it can be accessed via Reflection.
 	 * 
-	 * @param	ObjectAndVariable	The path to the variable as a String
-	 * @param	ObjectMap			A Map of registered objects to start the search from
+	 * @param	ObjectAndVariable	The path to the variable as a String, for example array.length
+	 * @param	Object	Starting point for the search, has to contain the first object / variable of the first param
 	 * @return	A PathToVarible typedef, or null.
 	 */
-	public static function resolveObjectAndVariable(ObjectAndVariable:String, ObjectMap:Map<String, Dynamic>):PathToVariable
+	public static function resolveObjectAndVariable(ObjectAndVariable:String, Object:Dynamic):PathToVariable
 	{
 		var searchArr:Array<String> = ObjectAndVariable.split(".");
 		
-		// In case there's no dot in the string
-		if (searchArr[0].length == ObjectAndVariable.length) 
+		if (searchArr.length == 1)
 		{
-			FlxG.log.error("'" + ObjectAndVariable + "' does not refer to an object's field");
-			return null;
+			return { object: Object, variableName: ObjectAndVariable };
 		}
 		
-		var object:Dynamic = ObjectMap.get(searchArr.shift());
 		var variableName:String = searchArr.join(".");
 		
-		if (!Reflect.isObject(object)) 
+		if (!Reflect.isObject(Object)) 
 		{
-			FlxG.log.error("'" + FlxStringUtil.getClassName(object, true) + "' is not a valid Object");
+			FlxG.log.error("'" + FlxStringUtil.getClassName(Object, true) + "' is not a valid Object");
 			return null;
 		}
 		
 		// Searching for property...
 		var l:Int = searchArr.length;
-		var tempObj:Dynamic = object;
+		var tempObj:Dynamic = Object;
 		var tempVarName:String = "";
 		for (i in 0...l)
 		{
@@ -158,7 +156,65 @@ class ConsoleUtil
 			}
 		}
 		
-		return { object:tempObj, variableName:tempVarName };
+		return { object: tempObj, variableName: tempVarName };
+	}
+	
+	/**
+	 * Helper function for the set command. Attempts to find the object which contains the variable to set
+	 * from the String path, like "FlxG.state.sprite.x" so it can be set via Reflection.
+	 * 
+	 * @param	ObjectAndVariable	The path to the variable as a String, for example array.length
+	 * @param	ObjectMap			A Map of registered objects to start the search from
+	 * @return	A PathToVarible typedef, or null.
+	 */
+	public static inline function resolveObjectAndVariableFromMap(ObjectAndVariable:String, ObjectMap:Map<String, Dynamic>):PathToVariable
+	{
+		var splitString:Array<String> = ObjectAndVariable.split(".");
+		var object:Dynamic = ObjectMap.get(splitString[0]);
+		splitString.shift();
+		ObjectAndVariable = splitString.join(".");
+		return resolveObjectAndVariable(ObjectAndVariable, object);
+	}
+	
+	/**
+	 * Type.getInstanceFields() returns all fields, including all those from super classes. This function allows
+	 * controlling the number of super classes whose fields should still be included in the list using Type.getSuperClass().
+	 * 
+	 * Example:
+	 * 	For a class PlayState with the following inheritance:
+	 * 	FlxBasic -> FlxTypedGroup -> FlxGroup -> FlxState -> PlayState 
+	 * 		numSuperClassesToInclude == 0 would only return the fields of PlayState itself	
+	 * 		numSuperClassesToInclude == 1 would only return the fields of PlayState and FlxState etc...
+	 */
+	public static function getInstanceFieldsAdvanced(cl:Class<Dynamic>, numSuperClassesToInclude:Int = 0):Array<String>
+	{
+		var fields:Array<String> = Type.getInstanceFields(cl);
+		if (numSuperClassesToInclude >= 0)
+		{
+			var curClass = Type.getSuperClass(cl);
+			var superClasses:Array<Class<Dynamic>> = [];
+			while (curClass != null) // no more super classes if null
+			{
+				superClasses.push(curClass);
+				curClass = Type.getSuperClass(curClass);
+			}
+			
+			superClasses.reverse();
+			
+			if (numSuperClassesToInclude > superClasses.length)
+				numSuperClassesToInclude = superClasses.length;
+				
+			for (i in 0...(superClasses.length - numSuperClassesToInclude))
+			{
+				var superFields:Array<String> = Type.getInstanceFields(superClasses[i]);
+				for (superField in superFields)
+				{
+					if (fields.indexOf(superField) != -1)
+						fields.remove(superField);
+				}
+			}
+		}
+		return fields;
 	}
 	
 	/**
@@ -171,17 +227,11 @@ class ConsoleUtil
 	public static function parseBool(s:String):Null<Bool>
 	{
 		if (s == "true") 
-		{
 			return true;
-		}
 		else if (s == "false") 
-		{
 			return false;
-		}
 		else
-		{
 			return null;
-		}
 	}
 	
 	/**

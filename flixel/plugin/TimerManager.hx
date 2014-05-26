@@ -18,7 +18,7 @@ class TimerManager extends FlxPlugin
 	{
 		super();
 		
-		_timers = new Array<FlxTimer>();
+		_timers = [];
 		
 		// Don't call draw on this plugin
 		visible = false; 
@@ -31,7 +31,6 @@ class TimerManager extends FlxPlugin
 	{
 		clear();
 		_timers = null;
-		
 		super.destroy();
 	}
 	
@@ -43,7 +42,7 @@ class TimerManager extends FlxPlugin
 	{
 		for (timer in _timers)
 		{
-			if (!timer.paused && !timer.finished && timer.time > 0)
+			if (timer.active && !timer.finished && timer.time > 0)
 			{
 				timer.update();
 			}
@@ -52,45 +51,35 @@ class TimerManager extends FlxPlugin
 	
 	/**
 	 * Add a new timer to the timer manager.
-	 * Usually called automatically by FlxTimer's constructor.
+	 * Called when FlxTimer is started.
 	 * 
 	 * @param	Timer	The FlxTimer you want to add to the manager.
 	 */
-	public function add(Timer:FlxTimer):Void
+	@:allow(flixel.util.FlxTimer)
+	private function add(Timer:FlxTimer):Void
 	{
-		if (FlxArrayUtil.indexOf(_timers, Timer) < 0) 
-		{
-			_timers.push(Timer);
-		}
+		_timers.push(Timer);
 	}
 	
 	/**
 	 * Remove a timer from the timer manager.
-	 * Usually called automatically by FlxTimer's stop() function.
+	 * Called automatically by FlxTimer's stop() function.
 	 * 
 	 * @param	Timer	The FlxTimer you want to remove from the manager.
 	 * @param	ReturnInPool Whether to reset and put Timer into internal _pool.
 	 */
-	public function remove(Timer:FlxTimer, ReturnInPool:Bool = true):Void
+	@:allow(flixel.util.FlxTimer)
+	private function remove(Timer:FlxTimer):Void
 	{
 		FlxArrayUtil.fastSplice(_timers, Timer);
-		
-		if (ReturnInPool)
-		{
-			FlxTimer.put(Timer);
-		}
 	}
 	
 	/**
 	 * Removes all the timers from the timer manager.
 	 */
-	public function clear():Void
+	public inline function clear():Void
 	{
-		while (_timers.length > 0)
-		{
-			var timer:FlxTimer = _timers.pop();
-			FlxTimer.put(timer);
-		}
+		FlxArrayUtil.clearArray(_timers);
 	}
 	
 	override public inline function onStateSwitch():Void

@@ -1,7 +1,7 @@
 ﻿package flixel.tweens.motion;
 
 import flixel.tweens.FlxEase.EaseFunction;
-import flixel.tweens.FlxTween.CompleteCallback;
+import flixel.tweens.FlxTween;
 
 /**
  * Determines motion along a line, from one point to another.
@@ -14,22 +14,11 @@ class LinearMotion extends Motion
 	public var distance(get, never):Float;
 	
 	// Line information.
-	private var _fromX:Float;
-	private var _fromY:Float;
-	private var _moveX:Float;
-	private var _moveY:Float;
-	private var _distance:Float;
-	
-	/**
-	 * @param	complete	Optional completion callback.
-	 * @param	type		Tween type.
-	 */
-	public function new(?complete:CompleteCallback, type:Int = 0)
-	{
-		super(0, complete, type, null);
-		_fromX = _fromY = _moveX = _moveY = 0;
-		_distance = -1;
-	}
+	private var _fromX:Float = 0;
+	private var _fromY:Float = 0;
+	private var _moveX:Float = 0;
+	private var _moveY:Float = 0;
+	private var _distance:Float = -1;
 
 	/**
 	 * Starts moving along a line.
@@ -40,9 +29,8 @@ class LinearMotion extends Motion
 	 * @param	ToY				Y finish.
 	 * @param	DurationOrSpeed	Duration or speed of the movement.
 	 * @param	UseDuration		Whether to use the previous param as duration or speed.
-	 * @param	Ease			Optional easer function.
 	 */
-	public function setMotion(FromX:Float, FromY:Float, ToX:Float, ToY:Float, DurationOrSpeed:Float, UseDuration:Bool = true, ?Ease:EaseFunction):LinearMotion
+	public function setMotion(FromX:Float, FromY:Float, ToX:Float, ToY:Float, DurationOrSpeed:Float, UseDuration:Bool = true):LinearMotion
 	{
 		_distance = -1;
 		x = _fromX = FromX;
@@ -59,13 +47,12 @@ class LinearMotion extends Motion
 			duration = distance / DurationOrSpeed;
 		}
 		
-		this.ease = Ease;
 		start();
 		
 		return this;
 	}
 
-	override public function update():Void
+	override private function update():Void
 	{
 		super.update();
 		x = _fromX + _moveX * scale;

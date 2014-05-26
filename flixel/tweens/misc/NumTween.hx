@@ -1,30 +1,29 @@
 ﻿package flixel.tweens.misc;
 
 import flixel.tweens.FlxTween;
-import flixel.tweens.FlxEase;
 
 /**
- * Tweens a numeric value.
+ * Tweens a numeric value. See FlxTween.num()
  */
 class NumTween extends FlxTween
 {
 	/**
 	 * The current value.
 	 */
-	public var value:Float;
+	public var value(default, null):Float;
 	
 	// Tween information.
+	private var _tweenFunction:Float->Void;
 	private var _start:Float;
 	private var _range:Float;
 	
 	/**
-	 * @param	complete	Optional completion callback.
-	 * @param	type		Tween type.
+	 * Clean up references
 	 */
-	public function new(complete:CompleteCallback = null, type:Int = 0) 
+	override public function destroy():Void 
 	{
-		value = 0;
-		super(0, type, complete);
+		super.destroy();
+		_tweenFunction = null;
 	}
 	
 	/**
@@ -33,21 +32,24 @@ class NumTween extends FlxTween
 	 * @param	fromValue		Start value.
 	 * @param	toValue			End value.
 	 * @param	duration		Duration of the tween.
-	 * @param	ease			Optional easer function.
+	 * @param	tweenFunction	Optional tween function. See FlxTween.num()
 	 */
-	public function tween(fromValue:Float, toValue:Float, duration:Float, ease:EaseFunction = null):NumTween
-	{
+	public function tween(fromValue:Float, toValue:Float, duration:Float, ?tweenFunction:Float->Void):NumTween
+	{	
+		_tweenFunction = tweenFunction;
 		_start = value = fromValue;
 		_range = toValue - value;
 		this.duration = duration;
-		this.ease = ease;
 		start();
 		return this;
 	}
 	
-	override public function update():Void
+	override private function update():Void
 	{
 		super.update();
 		value = _start + _range * scale;
+		
+		if (_tweenFunction != null)
+			_tweenFunction(value);
 	}
 }

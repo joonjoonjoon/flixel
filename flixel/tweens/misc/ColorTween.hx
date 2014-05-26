@@ -2,7 +2,6 @@
 
 import flixel.FlxSprite;
 import flixel.tweens.FlxTween;
-import flixel.tweens.FlxEase;
 
 /**
  * Tweens a color's red, green, and blue properties
@@ -10,13 +9,13 @@ import flixel.tweens.FlxEase;
  */
 class ColorTween extends FlxTween
 {
-	public var color:Int;
-	public var alpha:Float = 1;
+	public var color(default, null):Int;
+	public var alpha(default, null):Float = 1;
 	
 	/**
 	 * Optional sprite object whose color to tween
 	 */
-	public var sprite:FlxSprite;
+	public var sprite(default, null):FlxSprite;
 
 	/**
 	 * Red value of the current color, from 0 to 255.
@@ -42,15 +41,9 @@ class ColorTween extends FlxTween
 	private var _rangeB:Float;
 	
 	/**
-	 * @param	Complete	Optional completion callback.
-	 * @param	type		Tween type.
+	 * Clean up references
 	 */
-	public function new(?Complete:CompleteCallback, type:Int = 0)
-	{
-		super(0, type, Complete);
-	}
-	
-	override public function destroy():Void 
+	override public function destroy() 
 	{
 		super.destroy();
 		sprite = null;
@@ -64,11 +57,10 @@ class ColorTween extends FlxTween
 	 * @param	ToColor			End color.
 	 * @param	FromAlpha		Start alpha
 	 * @param	ToAlpha			End alpha.
-	 * @param	Ease			Optional easer function.
 	 * @param	Sprite			Optional sprite object whose color to tween.
 	 * @return	The ColorTween.
 	 */
-	public function tween(Duration:Float, FromColor:Int, ToColor:Int, FromAlpha:Float = 1, ToAlpha:Float = 1, ?Ease:EaseFunction, ?Sprite:FlxSprite):ColorTween
+	public function tween(Duration:Float, FromColor:Int, ToColor:Int, FromAlpha:Float = 1, ToAlpha:Float = 1, ?Sprite:FlxSprite):ColorTween
 	{
 		FromColor &= 0xFFFFFF;
 		ToColor &= 0xFFFFFF;
@@ -85,13 +77,12 @@ class ColorTween extends FlxTween
 		_startA = alpha = FromAlpha;
 		_rangeA = ToAlpha - alpha;
 		duration = Duration;
-		ease = Ease;
 		sprite = Sprite;
 		start();
 		return this;
 	}
 	
-	override public function update():Void
+	override private function update():Void
 	{
 		super.update();
 		alpha = _startA + _rangeA * scale;

@@ -1,8 +1,8 @@
 ﻿package flixel.tweens.motion;
 
 import flixel.tweens.FlxTween;
-import flixel.tweens.FlxTween.CompleteCallback;
-import flixel.tweens.FlxEase.EaseFunction;
+import flixel.util.FlxArrayUtil;
+import flixel.util.FlxDestroyUtil;
 import flixel.util.FlxPoint;
 
 /**
@@ -11,18 +11,15 @@ import flixel.util.FlxPoint;
  */
 class QuadPath extends Motion
 {
-	private static var _Point:FlxPoint = new FlxPoint();
-	private static var _Point2:FlxPoint = new FlxPoint();
-	
 	// Path information.
 	private var _points:Array<FlxPoint>;
-	private var _distance:Float;
-	private var _speed:Float;
-	private var _index:Int;
-	private var _numSegs:Int;
+	private var _distance:Float = 0;
+	private var _speed:Float = 0;
+	private var _index:Int = 0;
+	private var _numSegs:Int = 0;
 	
 	// Curve information.
-	private var _updateCurve:Bool;
+	private var _updateCurve:Bool = true;
 	private var _curveT:Array<Float>;
 	private var _curveD:Array<Float>;
 	
@@ -31,29 +28,26 @@ class QuadPath extends Motion
 	private var _b:FlxPoint;
 	private var _c:FlxPoint;
 	
-	/**
-	 * @param	complete	Optional completion callback.
-	 * @param	type		Tween type.
-	 */
-	public function new(?complete:CompleteCallback, type:Int = 0) 
+	private function new(Options:TweenOptions)
 	{
-		super(0, complete, type, null);
-		_points = new Array<FlxPoint>();
-		_curveD = new Array<Float>();
-		_curveT = new Array<Float>();
-		_distance = _speed = _index = _numSegs = 0;
-		_updateCurve = true;
+		super(Options);
+		
+		_points = [];
+		_curveT = [];
+		_curveD = [];
 	}
 	
 	override public function destroy():Void 
 	{
 		super.destroy();
-		_points = null;
-		_curveD = null;
-		_curveT = null;
-		_a = null;
-		_b = null;
-		_c = null;
+		// recycle FlxPoints
+		for (point in _points)
+		{
+			point = FlxDestroyUtil.put(point);
+		}
+		_a = FlxDestroyUtil.put(_a);
+		_b = FlxDestroyUtil.put(_b);
+		_c = FlxDestroyUtil.put(_c);
 	}
 	
 	/**
@@ -61,9 +55,8 @@ class QuadPath extends Motion
 	 * 
 	 * @param	DurationOrSpeed		Duration or speed of the movement.
 	 * @param	UseDuration			Whether to use the previous param as duration or speed.
-	 * @param	Ease				Optional easer function.
 	 */
-	public function setMotion(DurationOrSpeed:Float, UseDuration:Bool = true, ?Ease:EaseFunction):QuadPath
+	public function setMotion(DurationOrSpeed:Float, UseDuration:Bool = true):QuadPath
 	{
 		updatePath();
 		
@@ -78,7 +71,6 @@ class QuadPath extends Motion
 			_speed = DurationOrSpeed;
 		}
 		
-		ease = Ease;
 		start();
 		return this;
 	}
@@ -89,7 +81,7 @@ class QuadPath extends Motion
 	public function addPoint(x:Float = 0, y:Float = 0):QuadPath
 	{
 		_updateCurve = true;
-		_points[_points.length] = new FlxPoint(x, y);
+		_points.push(FlxPoint.get(x, y));
 		return this;
 	}
 	
@@ -105,14 +97,14 @@ class QuadPath extends Motion
 		return _points[index % _points.length];
 	}
 	
-	override public function start():QuadPath
+	override private function start():QuadPath
 	{
 		_index = (backward) ? (_numSegs - 1) : 0; 
 		super.start();
 		return this;
 	}
 	
-	override public function update():Void
+	override private function update():Void
 	{
 		super.update();
 		var td:Float;
@@ -207,8 +199,9 @@ class QuadPath extends Motion
 	
 	private function getCurveLength(start:FlxPoint, control:FlxPoint, finish:FlxPoint):Float
 	{
-		var a:FlxPoint = QuadPath._Point,
-			b:FlxPoint = QuadPath._Point2;
+		var a = FlxPoint.get();
+		var b = FlxPoint.get();
+		
 		a.x = start.x - 2 * control.x + finish.x;
 		a.y = start.y - 2 * control.y + finish.y;
 		b.x = 2 * control.x - 2 * start.x;
@@ -221,6 +214,10 @@ class QuadPath extends Motion
 			A32:Float = 2 * A * A2,
 			C2:Float = 2 * Math.sqrt(C),
 			BA:Float = B / A2;
+			
+		a.put();
+		b.put();
+			
 		return (A32 * ABC + A2 * B * (ABC - C2) + (4 * C * A - B * B) * Math.log((2 * A2 + BA + ABC) / (BA + C2))) / (4 * A32);
 	}
 }
