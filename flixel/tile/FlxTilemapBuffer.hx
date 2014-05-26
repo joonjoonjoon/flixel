@@ -6,11 +6,8 @@ import flash.geom.Point;
 import flash.geom.Rectangle;
 import flixel.FlxCamera;
 import flixel.FlxG;
-<<<<<<< HEAD
 import util.CameraHelper;
-=======
 import flixel.util.FlxColor;
->>>>>>> fadb541528a133f5d803482050a87141a64fc895
 
 /**
  * A helper object to keep tilemap drawing performance decent across the new multi-camera system.
